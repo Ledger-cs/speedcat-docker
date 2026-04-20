@@ -21,7 +21,11 @@ This document records the main technical findings, failed attempts, and working 
 - Default mode was set to `gui`
 - GUI mode runs under `Xvfb` with `x11vnc` and `noVNC`
 - A lighter `core` mode was also kept in `entrypoint.sh` for future pure headless use
-- Host networking was selected so proxy ports bind directly on the Linux server
+- The latest default deployment exposes explicit Docker ports instead of relying on host networking
+- The latest default deployment exposes:
+  - one management UI through `noVNC`
+  - one SOCKS5 proxy port on `6454`
+  - optional UI authentication through `UI_PASSWORD`
 
 ## Problems encountered and how they were handled
 
@@ -120,6 +124,20 @@ Observed results:
   - `6454`
   - `1053`
 - a real SOCKS5 request through `127.0.0.1:6454` succeeded
+
+## UI and proxy exposure validation
+
+After updating the deployment model to match the intended usage pattern:
+
+- the container published `6080/tcp` for the management UI
+- the container published `6454/tcp` for the SOCKS5 proxy
+- `http://127.0.0.1:6080/vnc.html` returned `200 OK`
+- a real SOCKS5 request through `127.0.0.1:6454` succeeded
+
+Optional UI authentication was checked by comparing the `x11vnc` startup arguments:
+
+- with no `UI_PASSWORD`, the process started with `-nopw`
+- with `UI_PASSWORD` set, the no-password flag disappeared, indicating password-protected mode
 
 ## Actions already taken in the repository
 

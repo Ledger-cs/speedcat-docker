@@ -18,8 +18,9 @@ The project supports two runtime modes:
 
 - `Dockerfile`: image build definition
 - `entrypoint.sh`: startup logic for `gui` and `core` modes
-- `docker-compose.yml`: default deployment
+- `docker-compose.yml`: default deployment with explicit UI and proxy port exposure
 - `docker-compose.tun.yml`: compatibility overlay for older deployments
+- `.env.example`: example runtime configuration for UI and proxy exposure
 - `install-docker-ubuntu.sh`: Docker installation helper with fallback logic
 - `docs/GITHUB_WORKFLOW.md`: recommended GitHub maintenance workflow
 - `docs/MAINTENANCE_NOTES.md`: technical findings and troubleshooting history
@@ -58,6 +59,12 @@ docker compose up -d --build
 
 Because the package archives are tracked in the repository, a fresh clone already contains the files needed for the initial image build.
 
+If you want to customize ports or enable UI authentication, copy the example environment file first:
+
+```bash
+cp .env.example .env
+```
+
 The default image and compose setup now also include the runtime pieces that the Speedcat Linux client expects during connection:
 
 - `libglib2.0-bin` for `gsettings`
@@ -67,19 +74,70 @@ The default image and compose setup now also include the runtime pieces that the
 - `NET_ADMIN`
 - `/dev/net/tun`
 
+## Default usage model
+
+The default deployment is designed around this usage pattern:
+
+1. Expose one management UI based on `noVNC`
+2. Optionally protect that UI with a password
+3. Expose one proxy port for client traffic
+
+By default:
+
+- management UI: `http://SERVER_IP:6080/vnc.html`
+- proxy port: `SERVER_IP:6454`
+- UI authentication: disabled unless `UI_PASSWORD` is set
+
+This default exposure model was validated on the remote server:
+
+- `http://127.0.0.1:6080/vnc.html` returned `200 OK`
+- SOCKS5 traffic succeeded through `127.0.0.1:6454`
+
 ## GUI bootstrap mode
 
 This is the safest mode when the provider only supports login and subscription sync in the official client.
 
 After startup:
 
-1. Forward or open port `6080`
-2. Visit `http://SERVER_IP:6080/vnc.html`
+1. Open `http://SERVER_IP:6080/vnc.html`
 3. Log in to your Speedcat account
 4. Select the node you want to use
 5. Try enabling the proxy service
 
 Persistent client data is stored under `./data`, so login state survives container recreation.
+
+If `UI_PASSWORD` is set, the noVNC session will require that password before you can use the desktop.
+
+The optional authentication behavior was also checked during testing:
+
+- without `UI_PASSWORD`, `x11vnc` started with `-nopw`
+- with `UI_PASSWORD` set, the no-password mode was removed and the VNC backend switched to password-protected mode
+
+## UI and proxy configuration
+
+The main runtime knobs are:
+
+- `NOVNC_HOST_PORT`: host port for the management UI, default `6080`
+- `UI_PASSWORD`: optional password for the noVNC session
+- `PROXY_SOCKS_HOST_PORT`: exposed SOCKS5 proxy port, default `6454`
+
+Example:
+
+```bash
+cp .env.example .env
+```
+
+```text
+NOVNC_HOST_PORT=16080
+UI_PASSWORD=change-me
+PROXY_SOCKS_HOST_PORT=16454
+```
+
+Then rebuild:
+
+```bash
+docker compose up -d --build
+```
 
 ## Why "connected" could fail before
 
@@ -173,8 +231,8 @@ When Speedcat releases a new Linux package:
 
 ## Build notes
 
-- `noVNC` listens on port `6080`
-- raw `VNC` listens on port `5900`
-- proxy ports are controlled by Speedcat itself
-- the default deployment uses `network_mode: host`
+- `noVNC` is the default management UI
+- raw `VNC` is kept as an internal backend for noVNC and is not published by default
+- the default exposed proxy port is the SOCKS5 listener on `6454`
+- the default deployment now uses explicit Docker port mappings instead of `network_mode: host`
 - this repository tracks deployment code and documentation, not account data or vendor downloads

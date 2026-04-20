@@ -35,6 +35,7 @@ DISPLAY_NUM="${DISPLAY:-:99}"
 VNC_PORT="${VNC_PORT:-5900}"
 NOVNC_PORT="${NOVNC_PORT:-6080}"
 XVFB_WHD="${XVFB_WHD:-1280x800x24}"
+UI_PASSWORD="${UI_PASSWORD:-${VNC_PASSWORD:-}}"
 
 PIDS=()
 
@@ -70,8 +71,8 @@ if [[ "${ENABLE_VNC:-1}" == "1" || "${ENABLE_NOVNC:-1}" == "1" ]]; then
     -quiet
   )
 
-  if [[ -n "${VNC_PASSWORD:-}" ]]; then
-    X11VNC_ARGS+=(-passwd "${VNC_PASSWORD}")
+  if [[ -n "${UI_PASSWORD}" ]]; then
+    X11VNC_ARGS+=(-passwd "${UI_PASSWORD}")
   else
     X11VNC_ARGS+=(-nopw)
   fi
