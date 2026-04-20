@@ -1,11 +1,12 @@
-FROM docker.m.daocloud.io/library/ubuntu:24.04
+FROM docker.m.daocloud.io/library/ubuntu:24.04@sha256:c4a8d5503dfb2a3eb8ab5f807da5bc69a85730fb49b5cfca2330194ebcc41c7b
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Keep only runtime dependencies in the image. Diagnostics should use
+# host-side docker tooling or temporary packages in ad hoc test containers.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     apache2-utils \
     ca-certificates \
-    curl \
     dbus-x11 \
     dconf-cli \
     fluxbox \
@@ -38,7 +39,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx-light \
     nftables \
     novnc \
-    procps \
     python3-websockify \
     tzdata \
     x11vnc \
@@ -76,6 +76,6 @@ ENV CONFIG_FILE=/data/config/config.yaml
 
 VOLUME ["/data"]
 
-EXPOSE 5900 6080 7890 7891 9090
+EXPOSE 6080 6454 19227 1053/tcp 1053/udp
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

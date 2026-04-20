@@ -312,4 +312,5 @@ When Speedcat releases a new Linux package:
 - DNS and control ports are opt-in through `docker-compose.admin-ports.yml`
 - the default deployment now uses explicit Docker port mappings instead of `network_mode: host`
 - the security-first default bind target is `127.0.0.1`
+- the runtime image intentionally excludes general debug tools such as `curl` and `procps`
 - this repository tracks deployment code and documentation, not account data or vendor downloads
