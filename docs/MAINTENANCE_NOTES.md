@@ -1,168 +1,200 @@
 # Maintenance Notes
 
-This document records the main technical findings, failed attempts, and working hypotheses discovered during the initial Speedcat Docker packaging effort.
+This document records the main technical findings, failed attempts, validated fixes, and current maintenance baseline for the Speedcat Docker packaging project.
 
-## Environment that was validated
+## Current validated baseline
 
-- Remote target server: Ubuntu 24.04.2
-- Docker was not available initially
-- Speedcat package analyzed from the downloaded Linux bundle
-- Official client no longer supports Clash-style direct usage and instead relies on its own client flow
+The repository currently represents a working and re-tested baseline with these characteristics:
+
+- target platform validated on a remote Ubuntu 24.04 server
+- Docker image built from Ubuntu 24.04 pinned by digest
+- default runtime mode is `gui`
+- GUI mode runs through `Xvfb` + `x11vnc` + `noVNC`
+- default published ports are:
+  - `127.0.0.1:6080` for the browser UI
+  - `127.0.0.1:6454` for the SOCKS5 proxy
+- optional admin overlay can additionally expose:
+  - `127.0.0.1:19227`
+  - `127.0.0.1:1053/tcp`
+  - `127.0.0.1:1053/udp`
+- build-time package integrity is enforced through SHA256 verification of the tracked Speedcat tarball
 
 ## Package inspection findings
 
-- `scclient` is the official GTK and Flutter desktop shell
-- `ScclientCore_amd64` is an embedded `mihomo` core
-- The embedded core reports itself as Mihomo Meta `v1.19.23`
-- The GUI appears to be required for login and subscription synchronization
+- `scclient` is the official desktop client shell
+- `ScclientCore_amd64` is the embedded proxy core
+- the embedded core identifies itself as Mihomo Meta `v1.19.23`
+- the official Linux flow no longer behaves like the earlier Clash-style package model
+- login and subscription synchronization still appear to depend on the official GUI path
 
-## Containerization decisions made
+## Key design decisions
 
-- Default mode was set to `gui`
-- GUI mode runs under `Xvfb` with `x11vnc` and `noVNC`
-- A lighter `core` mode was also kept in `entrypoint.sh` for future pure headless use
-- The latest default deployment exposes explicit Docker ports instead of relying on host networking
-- The latest default deployment exposes:
-  - one management UI through `noVNC`
-  - one SOCKS5 proxy port on `6454`
-  - optional UI authentication through `UI_PASSWORD`
+- keep `MODE=gui` as the operational default because it is the only fully validated bootstrap path
+- keep `MODE=core` available for future headless use once a stable config extraction path exists
+- expose only one management UI and one proxy port by default
+- keep DNS and control ports opt-in through `docker-compose.admin-ports.yml`
+- default all published ports to `127.0.0.1` so SSH tunneling remains the recommended access pattern
+- keep the image focused on runtime dependencies rather than general debugging tooling
 
-## Problems encountered and how they were handled
+## Problems encountered and how they were resolved
 
-### Docker installation
+### Docker installation on the remote server
 
-- Installing Docker from the official Docker apt repository failed on the remote server because of repository and network issues
-- The workaround was to install `docker.io`, `docker-compose-v2`, and `docker-buildx` from the Ubuntu repository
-- That fallback logic is now reflected in `install-docker-ubuntu.sh`
+Problem:
 
-### Image build source
+- Docker was not installed on the target server
+- installing from the official Docker apt repository was unreliable because of repository or network issues
 
-- Pulling the base image directly from Docker Hub was unreliable on the remote server
-- The base image was switched to `docker.m.daocloud.io/library/ubuntu:24.04`
+Resolution:
 
-### Desktop client on a headless server
+- switched the installation helper to use Ubuntu-packaged `docker.io`, `docker-compose-v2`, and `docker-buildx` as a fallback path
 
-- The target servers do not provide a desktop environment
-- GUI mode was packaged with virtual display and browser-accessible remote desktop so login can still be completed
-- Ports `5900` and `6080` were verified during the initial deployment
+Repository impact:
 
-### Runtime startup failure after login
+- `install-docker-ubuntu.sh` now reflects the fallback logic
 
-- The Speedcat account login succeeded inside the container
-- Node data synchronized successfully and a node such as `新加坡-01` appeared in the GUI
-- Pressing the GUI start button still failed with an operation error and the app remained in `未连接`
-- The embedded core process was observed starting with:
-  - `-d /data/home/.local/share/scclient/clash`
-  - `-f /data/home/.local/share/scclient/clash/config.yaml`
-- However, the expected `config.yaml` was not found on disk when inspected afterward
-- No proxy ports such as `7890`, `7891`, or `9090` became available on the host
+### Base image pull reliability
 
-### Logging and diagnostics difficulty
+Problem:
 
-- `app_2026-04-16.log` is not plain text and did not yield readable errors during simple inspection
-- `cache.db` is not a normal SQLite database
-- These two facts make the official client state harder to reverse engineer than a normal desktop app
+- pulling directly from Docker Hub was unreliable on the remote host
 
-## Root cause identified
+Resolution:
 
-The final root cause was more specific than "the proxy core did not start".
+- switched the image source to `docker.m.daocloud.io/library/ubuntu:24.04`
+- later pinned the exact digest for stronger reproducibility
 
-- The embedded `mihomo` core was already starting correctly
-- SOCKS5 and DNS listeners were already present
-- Real proxy traffic could already pass through
-- But the GUI still showed `未连接`
+Repository impact:
 
-The reason is that the Speedcat Linux client does not decide its "connected" state only from the embedded core. It also depends on a system proxy integration step.
+- `Dockerfile` now uses a digest-pinned Ubuntu base image
 
-The client binary was observed invoking system integration commands such as:
+### Running a desktop-only client on a headless server
 
-- `gsettings set org.gnome.system.proxy ...`
-- KDE-side configuration commands such as `kwriteconfig5`
+Problem:
 
-In the original container:
+- the target Linux virtual servers are headless
+- the Speedcat provider flow still requires the official GUI for login and node sync
 
-- `NET_ADMIN` and `/dev/net/tun` were not available by default
-- `iptables` and `nftables` were not baked into the image
-- the GNOME proxy integration tools were missing, especially:
-  - `gsettings`
-  - `dconf`
+Resolution:
 
-That meant:
+- packaged the desktop client into a virtual display environment
+- exposed browser-based access through noVNC
+- kept raw VNC internal and unpublished by default
 
-- the core could run
-- the proxy could actually work
-- but the GUI-side system proxy step still failed
-- and the application refused to switch its status to `已连接`
+Repository impact:
 
-After adding:
+- `entrypoint.sh` starts `Xvfb`, `fluxbox`, `x11vnc`, `websockify`, and the Nginx UI gateway in GUI mode
 
-- `libglib2.0-bin`
-- `dconf-cli`
+### "Operation failed" / GUI stuck at `未连接`
 
-and preserving the required runtime privileges:
+Problem:
 
-- `NET_ADMIN`
-- `/dev/net/tun`
-- `iptables`
-- `nftables`
+- login succeeded
+- nodes synchronized
+- the embedded core was starting
+- SOCKS5 and DNS listeners were already coming up
+- real proxy traffic could pass
+- but the GUI still showed `未连接`
 
-the client could complete its full connection flow and the GUI status changed normally.
+Root cause:
 
-## Remote validation performed
+- the Linux client does not treat "core started" as the only success condition
+- it also attempts system proxy integration before changing the GUI state
+- the binary was observed invoking system integration commands such as:
+  - `gsettings set org.gnome.system.proxy ...`
+  - KDE-side configuration helpers such as `kwriteconfig5`
+- the earlier container lacked the required support chain:
+  - `libglib2.0-bin` for `gsettings`
+  - `dconf-cli`
+  - `iptables`
+  - `nftables`
+  - required privileges such as `NET_ADMIN` and `/dev/net/tun`
 
-The updated deployment was re-tested on the remote Ubuntu server after syncing the new `Dockerfile` and `docker-compose.yml`.
+Resolution:
+
+- added `libglib2.0-bin` and `dconf-cli` to the image
+- added `iptables` and `nftables` to the image
+- enabled `NET_ADMIN`
+- mounted `/dev/net/tun`
+
+Repository impact:
+
+- the default compose deployment now includes the privileges needed for the validated connection path
+- `docker-compose.tun.yml` remains only as a backward-compatible overlay
+
+### UI hardening and exposure control
+
+Problem:
+
+- the initial browser-accessible GUI path needed stronger protection for private-server use
+
+Resolution:
+
+- added HTTP Basic Auth support in front of noVNC
+- added optional VNC password support
+- added request rate limiting and concurrent connection limiting in Nginx
+- limited default host exposure to loopback addresses
+- moved DNS and control ports into an optional compose overlay
+
+Repository impact:
+
+- the default deployment is now safer for SSH-tunneled private use
+
+### Build-input integrity
+
+Problem:
+
+- replacing the tracked Speedcat tarball without any guard could silently change the build contents
+
+Resolution:
+
+- added `SCCLIENT_TARBALL_SHA256` to `Dockerfile`
+- verified the archive with `sha256sum -c` before extraction
+
+Repository impact:
+
+- image builds now fail early if the tracked tarball does not match the expected checksum
+
+## Validation performed on the remote server
+
+The current baseline was re-tested on the remote host `einfash`.
 
 Observed results:
 
-- the container rebuilt successfully
+- `docker compose build` succeeded
+- the SHA256 verification step returned `OK`
 - the container started with `CAP_NET_ADMIN` and `/dev/net/tun`
-- `gsettings`, `dconf`, `iptables`, and `nft` were present inside the container
-- the GUI initially opened in `未连接`, which is expected before pressing the main connect button
-- after simulating a click on the connect button, the GUI switched to `已连接`
-- listeners were present on:
-  - `127.0.0.1:19227`
-  - `6454`
-  - `1053`
+- `gsettings`, `dconf`, `iptables`, and `nft` were available inside the container
+- the GUI opened normally through noVNC
+- after pressing the connect action, the client changed from `未连接` to `已连接`
+- host listeners were observed on:
+  - `127.0.0.1:6080`
+  - `127.0.0.1:6454`
+  - `127.0.0.1:19227` when the admin overlay was enabled
+  - `127.0.0.1:1053` for TCP and UDP when the admin overlay was enabled
 - a real SOCKS5 request through `127.0.0.1:6454` succeeded
+- HTTP Basic Auth returned `401 Unauthorized` when credentials were missing and `200 OK` when they were correct
+- the UI limiter could reject repeated requests with `429 Too Many Requests`
 
-## UI and proxy exposure validation
+## Current repository status
 
-After updating the deployment model to match the intended usage pattern:
+The following maintenance work is already reflected in the repository:
 
-- the container published `6080/tcp` for the management UI
-- the container published `6454/tcp` for the SOCKS5 proxy
-- the published bindings were limited to `127.0.0.1`
-- `http://127.0.0.1:6080/vnc.html` returned `200 OK`
-- a real SOCKS5 request through `127.0.0.1:6454` succeeded
+- GUI bootstrap path packaged for headless Linux servers
+- future `MODE=core` path preserved but not yet fully operationally documented
+- Docker installation helper with Ubuntu fallback
+- explicit port-publishing compose model
+- optional admin-port overlay
+- compatibility TUN overlay for older deployments
+- image hardening and runtime package trimming
+- package checksum verification
+- GitHub workflow documentation
+- maintenance, security, and open-issue tracking in `docs/`
 
-Optional UI authentication was checked by comparing the `x11vnc` startup arguments:
+## Remaining gaps
 
-- with no `UI_PASSWORD`, the process started with `-nopw`
-- with `UI_PASSWORD` set, the no-password flag disappeared, indicating password-protected mode
+The project is functional, but a few important areas remain open:
 
-HTTP Basic Auth for noVNC was also validated:
-
-- without credentials, the UI endpoint returned `401 Unauthorized`
-- with the configured credentials, the UI endpoint returned `200 OK`
-
-UI rate limiting was validated by temporarily setting a very low threshold:
-
-- unauthenticated requests still returned `401 Unauthorized`
-- the first authenticated requests returned `200 OK`
-- repeated fast authenticated requests returned `429 Too Many Requests`
-
-The optional admin port overlay was validated as well:
-
-- `127.0.0.1:19227` mapped to the control port
-- `127.0.0.1:1053/tcp` mapped to the DNS TCP listener
-- `127.0.0.1:1053/udp` mapped to the DNS UDP listener
-
-## Actions already taken in the repository
-
-- Added `libglib2.0-bin` and `dconf-cli` to the image
-- Added `iptables` and `nftables` to the image
-- Enabled `NET_ADMIN` and `/dev/net/tun` in the default compose deployment
-- Kept `docker-compose.tun.yml` only as a backward-compatible overlay
-- Documented the system proxy integration requirement in `README.md`
-- Preserved both GUI and future core-only startup paths
-- Added GitHub maintenance documentation so future work can continue from the recorded findings
+- a repeatable pure headless `MODE=core` workflow is still not extracted
+- the official client's internal logs remain hard to decode
+- long-term package update testing will need to confirm whether future vendor releases preserve the same connection assumptions
