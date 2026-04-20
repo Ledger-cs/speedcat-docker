@@ -118,6 +118,13 @@ After login, a healthy GUI-mode connection should now satisfy all of these at on
 - proxy ports such as SOCKS5 and DNS remain reachable inside the container or on the host
 - traffic can pass through the configured proxy path
 
+This behavior was validated on the remote Ubuntu server used during this project:
+
+- after rebuilding with the updated image and compose file, the GUI still opened normally
+- clicking the main connect button switched the app state from `未连接` to `已连接`
+- host listeners remained present on `127.0.0.1:19227`, `6454`, and `1053`
+- a real SOCKS5 test request succeeded through `127.0.0.1:6454`
+
 ## Headless core mode
 
 If you later obtain a stable generated `mihomo` config, place it here:

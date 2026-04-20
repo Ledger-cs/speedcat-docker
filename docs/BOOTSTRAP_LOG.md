@@ -30,3 +30,9 @@ This file records the initial repository setup so future maintenance stays under
 - Local Git history was initialized successfully
 - The GitHub repository was created and connected successfully
 - SSH-based push was used because GitHub CLI web authentication was unreliable in the local shell environment
+
+## Validation status
+
+- The GUI connection-state fix was not only documented but also re-tested on the remote Linux server
+- The rebuilt container switched from `未连接` to `已连接` after the connect action
+- SOCKS5 traffic was confirmed working through the rebuilt deployment

@@ -104,6 +104,23 @@ and preserving the required runtime privileges:
 
 the client could complete its full connection flow and the GUI status changed normally.
 
+## Remote validation performed
+
+The updated deployment was re-tested on the remote Ubuntu server after syncing the new `Dockerfile` and `docker-compose.yml`.
+
+Observed results:
+
+- the container rebuilt successfully
+- the container started with `CAP_NET_ADMIN` and `/dev/net/tun`
+- `gsettings`, `dconf`, `iptables`, and `nft` were present inside the container
+- the GUI initially opened in `未连接`, which is expected before pressing the main connect button
+- after simulating a click on the connect button, the GUI switched to `已连接`
+- listeners were present on:
+  - `127.0.0.1:19227`
+  - `6454`
+  - `1053`
+- a real SOCKS5 request through `127.0.0.1:6454` succeeded
+
 ## Actions already taken in the repository
 
 - Added `libglib2.0-bin` and `dconf-cli` to the image
