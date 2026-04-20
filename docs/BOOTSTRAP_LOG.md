@@ -27,5 +27,6 @@ This file records the initial repository setup so future maintenance stays under
 
 ## Current GitHub status
 
-- Local Git history is ready
-- Remote GitHub repository creation still requires working network access to `github.com:443`
+- Local Git history was initialized successfully
+- The GitHub repository was created and connected successfully
+- SSH-based push was used because GitHub CLI web authentication was unreliable in the local shell environment

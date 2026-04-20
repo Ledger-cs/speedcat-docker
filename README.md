@@ -22,6 +22,8 @@ The project supports two runtime modes:
 - `docker-compose.tun.yml`: optional TUN capability overlay
 - `install-docker-ubuntu.sh`: Docker installation helper with fallback logic
 - `docs/GITHUB_WORKFLOW.md`: recommended GitHub maintenance workflow
+- `docs/MAINTENANCE_NOTES.md`: technical findings and troubleshooting history
+- `docs/OPEN_ISSUES.md`: unresolved follow-up work for future maintenance
 
 ## Included artifacts
 
@@ -116,6 +118,11 @@ This repository is designed to be managed with GitHub:
 - install Git LFS before pulling or replacing `linux.zip`
 
 See `docs/GITHUB_WORKFLOW.md` for the recommended daily workflow.
+
+For project history and pending technical work, also see:
+
+- `docs/MAINTENANCE_NOTES.md`
+- `docs/OPEN_ISSUES.md`
 
 ## Updating the Speedcat package later
 
