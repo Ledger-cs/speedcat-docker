@@ -301,8 +301,26 @@ When Speedcat releases a new Linux package:
 
 1. Create a new branch
 2. Replace `linux.zip` and the extracted package archive used by the build
-3. Update documentation if the version or startup behavior changes
-4. Commit and open a Pull Request for review
+3. Recalculate the SHA256 of `scclient_1.33.12_linux_universal_amd64.tar.gz`
+4. Update the `SCCLIENT_TARBALL_SHA256` value in `Dockerfile`
+5. Update documentation if the version or startup behavior changes
+6. Commit and open a Pull Request for review
+
+Example SHA256 commands:
+
+On Windows PowerShell:
+
+```powershell
+Get-FileHash .\scclient_1.33.12_linux_universal_amd64.tar.gz -Algorithm SHA256
+```
+
+On Linux:
+
+```bash
+sha256sum ./scclient_1.33.12_linux_universal_amd64.tar.gz
+```
+
+The Docker build now verifies the package hash before unpacking it, so replacing the archive without updating `SCCLIENT_TARBALL_SHA256` will make the build fail early.
 
 ## Build notes
 

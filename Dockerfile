@@ -1,6 +1,7 @@
 FROM docker.m.daocloud.io/library/ubuntu:24.04@sha256:c4a8d5503dfb2a3eb8ab5f807da5bc69a85730fb49b5cfca2330194ebcc41c7b
 
 ENV DEBIAN_FRONTEND=noninteractive
+ARG SCCLIENT_TARBALL_SHA256=37568906AABB5BA0B21E5B38EB5A0E14C48D908ADC0642F38439E1A17A53A401
 
 # Keep only runtime dependencies in the image. Diagnostics should use
 # host-side docker tooling or temporary packages in ad hoc test containers.
@@ -51,7 +52,8 @@ RUN useradd --create-home --home-dir /home/scclient --shell /bin/bash --uid 1000
 
 COPY scclient_1.33.12_linux_universal_amd64.tar.gz /tmp/scclient.tar.gz
 
-RUN tar -xzf /tmp/scclient.tar.gz -C /tmp \
+RUN echo "${SCCLIENT_TARBALL_SHA256}  /tmp/scclient.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/scclient.tar.gz -C /tmp \
     && cp -a /tmp/bundle/. /opt/scclient/ \
     && rm -rf /tmp/bundle /tmp/scclient.tar.gz \
     && chown -R scclient:scclient /opt/scclient
