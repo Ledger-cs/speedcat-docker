@@ -1,0 +1,15 @@
+data/
+*.log
+*.tmp
+*.db
+*.sqlite
+*.png
+*.jpg
+*.jpeg
+*.zip
+*.tar.gz
+*.tar
+*.7z
+.env
+.DS_Store
+Thumbs.db
