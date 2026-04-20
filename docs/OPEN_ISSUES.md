@@ -4,28 +4,7 @@ This file tracks unresolved work items that should remain visible in the reposit
 
 ## High priority
 
-### 1. Verify whether TUN access fixes the GUI start failure
-
-Status:
-- Not yet fully re-tested after adding `docker-compose.tun.yml`
-
-Evidence:
-- Login works
-- Node synchronization works
-- Start action fails
-- Container originally lacked `/dev/net/tun` and `NET_ADMIN`
-
-Next step:
-- Rebuild and run with:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.tun.yml up -d --build
-```
-
-- Retry enabling the proxy from the GUI
-- Confirm whether proxy ports become reachable on the host
-
-### 2. Extract a stable pure headless `core` mode workflow
+### 1. Extract a stable pure headless `core` mode workflow
 
 Status:
 - Incomplete
@@ -42,7 +21,7 @@ Next step:
 
 ## Medium priority
 
-### 3. Improve observability of the official client
+### 2. Improve observability of the official client
 
 Status:
 - Incomplete
@@ -55,7 +34,7 @@ Next step:
 - Investigate whether logs are compressed, binary encoded, or protobuf-like
 - Check whether newer package versions expose clearer diagnostics
 
-### 4. Decide whether unpacked analysis directories should be versioned
+### 3. Decide whether unpacked analysis directories should be versioned
 
 Status:
 - Deferred

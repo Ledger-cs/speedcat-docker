@@ -1,5 +1,8 @@
 services:
   speedcat:
+    # Kept for backward compatibility. These settings are now enabled
+    # in docker-compose.yml because the client's connected state depends
+    # on system proxy integration and TUN-related runtime privileges.
     cap_add:
       - NET_ADMIN
     devices:

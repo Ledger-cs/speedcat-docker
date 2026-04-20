@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     dbus-x11 \
+    dconf-cli \
     fluxbox \
     fonts-dejavu-core \
     fonts-noto-cjk \
@@ -19,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgbm1 \
     libgdk-pixbuf-2.0-0 \
     libglib2.0-0t64 \
+    libglib2.0-bin \
     libgtk-3-0 \
     libharfbuzz0b \
     libjavascriptcoregtk-4.1-0 \
@@ -31,6 +33,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcomposite1 \
     libxdamage1 \
     libxrandr2 \
+    iptables \
+    nftables \
     novnc \
     procps \
     python3-websockify \

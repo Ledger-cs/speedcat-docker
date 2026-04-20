@@ -7,6 +7,10 @@ services:
     container_name: speedcat-scclient
     restart: unless-stopped
     network_mode: host
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
     shm_size: "512m"
     environment:
       TZ: ${TZ:-Asia/Shanghai}

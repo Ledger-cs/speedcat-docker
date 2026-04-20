@@ -19,7 +19,7 @@ The project supports two runtime modes:
 - `Dockerfile`: image build definition
 - `entrypoint.sh`: startup logic for `gui` and `core` modes
 - `docker-compose.yml`: default deployment
-- `docker-compose.tun.yml`: optional TUN capability overlay
+- `docker-compose.tun.yml`: compatibility overlay for older deployments
 - `install-docker-ubuntu.sh`: Docker installation helper with fallback logic
 - `docs/GITHUB_WORKFLOW.md`: recommended GitHub maintenance workflow
 - `docs/MAINTENANCE_NOTES.md`: technical findings and troubleshooting history
@@ -58,6 +58,15 @@ docker compose up -d --build
 
 Because the package archives are tracked in the repository, a fresh clone already contains the files needed for the initial image build.
 
+The default image and compose setup now also include the runtime pieces that the Speedcat Linux client expects during connection:
+
+- `libglib2.0-bin` for `gsettings`
+- `dconf-cli` for desktop proxy configuration helpers
+- `iptables`
+- `nftables`
+- `NET_ADMIN`
+- `/dev/net/tun`
+
 ## GUI bootstrap mode
 
 This is the safest mode when the provider only supports login and subscription sync in the official client.
@@ -72,20 +81,42 @@ After startup:
 
 Persistent client data is stored under `./data`, so login state survives container recreation.
 
-## TUN mode troubleshooting
+## Why "connected" could fail before
 
-On headless Linux servers, Speedcat may fail with an operation error if the client tries to enable TUN mode but the container does not have TUN access.
+The Linux client does not treat "mihomo started" as the only success condition. Its GUI state also depends on a system proxy integration step.
 
-If startup fails after login, start the container with the TUN overlay:
+Earlier deployments could show `未连接` even when the proxy core was already working because:
+
+- the embedded `mihomo` process had started
+- SOCKS5 and DNS ports were listening
+- proxy traffic could already pass through
+- but the container did not provide `gsettings` and `dconf`, so the client failed during its system proxy setup step
+
+The image now includes the required GNOME-side tools so the client can complete that step and switch the GUI state to `已连接`.
+
+## System proxy and TUN requirements
+
+For the Speedcat Linux client to report a successful connection in GUI mode, the container needs both:
+
+- proxy runtime privileges such as `NET_ADMIN` and `/dev/net/tun`
+- desktop proxy integration tools such as `gsettings` and `dconf`
+
+If you are upgrading an older deployment that still lacks these settings, rebuild and restart it. The compatibility overlay remains available:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.tun.yml up -d --build
 ```
 
-This adds:
+The overlay keeps the older TUN privilege patch path available, but new deployments already include those settings in `docker-compose.yml`.
 
-- `NET_ADMIN`
-- `/dev/net/tun:/dev/net/tun`
+## Connection verification
+
+After login, a healthy GUI-mode connection should now satisfy all of these at once:
+
+- the GUI switches from `未连接` to `已连接`
+- the embedded `mihomo` process stays alive
+- proxy ports such as SOCKS5 and DNS remain reachable inside the container or on the host
+- traffic can pass through the configured proxy path
 
 ## Headless core mode
 

@@ -59,19 +59,57 @@ This document records the main technical findings, failed attempts, and working 
 - `cache.db` is not a normal SQLite database
 - These two facts make the official client state harder to reverse engineer than a normal desktop app
 
-## Most likely cause identified
+## Root cause identified
 
-The strongest working theory is that the GUI start action enables TUN mode or a similar system-level proxy mode by default. In the original deployment:
+The final root cause was more specific than "the proxy core did not start".
 
-- the host had `/dev/net/tun`
-- the container did not have `/dev/net/tun`
-- the container also did not have `NET_ADMIN`
+- The embedded `mihomo` core was already starting correctly
+- SOCKS5 and DNS listeners were already present
+- Real proxy traffic could already pass through
+- But the GUI still showed `未连接`
 
-That combination is consistent with a start failure on a headless container even though account login and node synchronization work.
+The reason is that the Speedcat Linux client does not decide its "connected" state only from the embedded core. It also depends on a system proxy integration step.
+
+The client binary was observed invoking system integration commands such as:
+
+- `gsettings set org.gnome.system.proxy ...`
+- KDE-side configuration commands such as `kwriteconfig5`
+
+In the original container:
+
+- `NET_ADMIN` and `/dev/net/tun` were not available by default
+- `iptables` and `nftables` were not baked into the image
+- the GNOME proxy integration tools were missing, especially:
+  - `gsettings`
+  - `dconf`
+
+That meant:
+
+- the core could run
+- the proxy could actually work
+- but the GUI-side system proxy step still failed
+- and the application refused to switch its status to `已连接`
+
+After adding:
+
+- `libglib2.0-bin`
+- `dconf-cli`
+
+and preserving the required runtime privileges:
+
+- `NET_ADMIN`
+- `/dev/net/tun`
+- `iptables`
+- `nftables`
+
+the client could complete its full connection flow and the GUI status changed normally.
 
 ## Actions already taken in the repository
 
-- Added `docker-compose.tun.yml`
-- Documented TUN startup troubleshooting in `README.md`
+- Added `libglib2.0-bin` and `dconf-cli` to the image
+- Added `iptables` and `nftables` to the image
+- Enabled `NET_ADMIN` and `/dev/net/tun` in the default compose deployment
+- Kept `docker-compose.tun.yml` only as a backward-compatible overlay
+- Documented the system proxy integration requirement in `README.md`
 - Preserved both GUI and future core-only startup paths
 - Added GitHub maintenance documentation so future work can continue from the recorded findings
