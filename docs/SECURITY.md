@@ -49,6 +49,28 @@ The Basic Auth layer was verified with real requests:
 - unauthenticated requests returned `401 Unauthorized`
 - authenticated requests returned `200 OK`
 
+## UI rate limiting
+
+The noVNC HTTP gateway also supports request and connection limiting:
+
+- `UI_RATE_LIMIT_RPS`: average request rate per client IP
+- `UI_RATE_LIMIT_BURST`: short request burst allowance
+- `UI_RATE_LIMIT_CONN`: concurrent connections per client IP
+
+Default values are intentionally conservative:
+
+- `UI_RATE_LIMIT_RPS=5`
+- `UI_RATE_LIMIT_BURST=20`
+- `UI_RATE_LIMIT_CONN=10`
+
+These limits are applied by Nginx before traffic reaches the noVNC backend.
+
+The limiter behavior was verified on the remote server by temporarily setting very low values:
+
+- unauthenticated requests still returned `401 Unauthorized`
+- authenticated requests were accepted at first
+- repeated fast authenticated requests were rejected with `429 Too Many Requests`
+
 ## Optional admin ports
 
 The DNS and control ports are intentionally kept out of the default deployment.

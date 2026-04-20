@@ -140,6 +140,9 @@ The main runtime knobs are:
 - `UI_AUTH_USERNAME`: optional HTTP Basic Auth username
 - `UI_AUTH_PASSWORD`: optional HTTP Basic Auth password
 - `UI_PASSWORD`: optional password for the noVNC session
+- `UI_RATE_LIMIT_RPS`: UI request rate limit, default `5`
+- `UI_RATE_LIMIT_BURST`: short burst allowance for UI requests, default `20`
+- `UI_RATE_LIMIT_CONN`: per-client concurrent UI connections, default `10`
 - `PROXY_SOCKS_HOST_PORT`: exposed SOCKS5 proxy port, default `6454`
 - `PROXY_BIND_ADDR`: bind address for the SOCKS5 proxy, default `127.0.0.1`
 
@@ -155,6 +158,9 @@ NOVNC_HOST_PORT=16080
 UI_AUTH_USERNAME=admin
 UI_AUTH_PASSWORD=change-me
 UI_PASSWORD=change-me
+UI_RATE_LIMIT_RPS=5
+UI_RATE_LIMIT_BURST=20
+UI_RATE_LIMIT_CONN=10
 PROXY_BIND_ADDR=127.0.0.1
 PROXY_SOCKS_HOST_PORT=16454
 ```
@@ -185,6 +191,26 @@ The optional overlay was validated on the remote server and correctly published:
 - `127.0.0.1:19227 -> 19227/tcp`
 - `127.0.0.1:1053 -> 1053/tcp`
 - `127.0.0.1:1053 -> 1053/udp`
+
+## UI rate limiting
+
+The noVNC gateway also supports Nginx-side request limiting:
+
+- `UI_RATE_LIMIT_RPS`: average requests per second per client IP
+- `UI_RATE_LIMIT_BURST`: short burst allowance
+- `UI_RATE_LIMIT_CONN`: concurrent connections per client IP
+
+The default values are:
+
+- `UI_RATE_LIMIT_RPS=5`
+- `UI_RATE_LIMIT_BURST=20`
+- `UI_RATE_LIMIT_CONN=10`
+
+This behavior was validated on the remote server by temporarily lowering the limits and testing authenticated access:
+
+- unauthenticated requests still returned `401 Unauthorized`
+- authenticated requests initially returned `200 OK`
+- repeated fast authenticated requests were throttled with `429 Too Many Requests`
 
 ## Why "connected" could fail before
 

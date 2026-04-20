@@ -39,6 +39,9 @@ XVFB_WHD="${XVFB_WHD:-1280x800x24}"
 UI_PASSWORD="${UI_PASSWORD:-${VNC_PASSWORD:-}}"
 UI_AUTH_USERNAME="${UI_AUTH_USERNAME:-}"
 UI_AUTH_PASSWORD="${UI_AUTH_PASSWORD:-}"
+UI_RATE_LIMIT_RPS="${UI_RATE_LIMIT_RPS:-5}"
+UI_RATE_LIMIT_BURST="${UI_RATE_LIMIT_BURST:-20}"
+UI_RATE_LIMIT_CONN="${UI_RATE_LIMIT_CONN:-10}"
 
 PIDS=()
 
@@ -116,6 +119,10 @@ http {
   default_type application/octet-stream;
   access_log /data/logs/nginx-access.log;
   sendfile on;
+  limit_req_zone \$binary_remote_addr zone=ui_req_limit:10m rate=${UI_RATE_LIMIT_RPS}r/s;
+  limit_conn_zone \$binary_remote_addr zone=ui_conn_limit:10m;
+  limit_req_status 429;
+  limit_conn_status 429;
   client_body_temp_path /tmp/nginx/client_temp;
   proxy_temp_path /tmp/nginx/proxy_temp;
   fastcgi_temp_path /tmp/nginx/fastcgi_temp;
@@ -133,6 +140,8 @@ http {
 
     location / {
 ${AUTH_DIRECTIVES}
+      limit_req zone=ui_req_limit burst=${UI_RATE_LIMIT_BURST} nodelay;
+      limit_conn ui_conn_limit ${UI_RATE_LIMIT_CONN};
       proxy_pass http://127.0.0.1:${NOVNC_BACKEND_PORT};
       proxy_http_version 1.1;
       proxy_set_header Host \$host;

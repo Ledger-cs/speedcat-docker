@@ -145,6 +145,12 @@ HTTP Basic Auth for noVNC was also validated:
 - without credentials, the UI endpoint returned `401 Unauthorized`
 - with the configured credentials, the UI endpoint returned `200 OK`
 
+UI rate limiting was validated by temporarily setting a very low threshold:
+
+- unauthenticated requests still returned `401 Unauthorized`
+- the first authenticated requests returned `200 OK`
+- repeated fast authenticated requests returned `429 Too Many Requests`
+
 The optional admin port overlay was validated as well:
 
 - `127.0.0.1:19227` mapped to the control port
