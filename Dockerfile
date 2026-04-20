@@ -3,6 +3,7 @@ FROM docker.m.daocloud.io/library/ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    apache2-utils \
     ca-certificates \
     curl \
     dbus-x11 \
@@ -34,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxdamage1 \
     libxrandr2 \
     iptables \
+    nginx-light \
     nftables \
     novnc \
     procps \

@@ -19,12 +19,14 @@ The project supports two runtime modes:
 - `Dockerfile`: image build definition
 - `entrypoint.sh`: startup logic for `gui` and `core` modes
 - `docker-compose.yml`: default deployment with explicit UI and proxy port exposure
+- `docker-compose.admin-ports.yml`: optional DNS and control port exposure
 - `docker-compose.tun.yml`: compatibility overlay for older deployments
 - `.env.example`: example runtime configuration for UI and proxy exposure
 - `install-docker-ubuntu.sh`: Docker installation helper with fallback logic
 - `docs/GITHUB_WORKFLOW.md`: recommended GitHub maintenance workflow
 - `docs/MAINTENANCE_NOTES.md`: technical findings and troubleshooting history
 - `docs/OPEN_ISSUES.md`: unresolved follow-up work for future maintenance
+- `docs/SECURITY.md`: security posture and recommended deployment model
 
 ## Included artifacts
 
@@ -86,12 +88,14 @@ By default:
 
 - management UI: `http://SERVER_IP:6080/vnc.html`
 - proxy port: `SERVER_IP:6454`
-- UI authentication: disabled unless `UI_PASSWORD` is set
+- UI authentication: disabled unless `UI_AUTH_USERNAME` and `UI_AUTH_PASSWORD` are set
+- default bind addresses: `127.0.0.1` for both UI and proxy, to encourage SSH tunneling instead of public exposure
 
 This default exposure model was validated on the remote server:
 
 - `http://127.0.0.1:6080/vnc.html` returned `200 OK`
 - SOCKS5 traffic succeeded through `127.0.0.1:6454`
+- the container published only `127.0.0.1:6080` and `127.0.0.1:6454` in the default deployment
 
 ## GUI bootstrap mode
 
@@ -113,13 +117,31 @@ The optional authentication behavior was also checked during testing:
 - without `UI_PASSWORD`, `x11vnc` started with `-nopw`
 - with `UI_PASSWORD` set, the no-password mode was removed and the VNC backend switched to password-protected mode
 
+To add an HTTP authentication layer in front of noVNC, set both:
+
+```text
+UI_AUTH_USERNAME=admin
+UI_AUTH_PASSWORD=change-me
+```
+
+When those two variables are set, the management page requires HTTP Basic Auth before the noVNC session can even load.
+
+That behavior was also verified on the remote server:
+
+- without credentials, `http://127.0.0.1:6080/vnc.html` returned `401 Unauthorized`
+- with the configured credentials, the same endpoint returned `200 OK`
+
 ## UI and proxy configuration
 
 The main runtime knobs are:
 
 - `NOVNC_HOST_PORT`: host port for the management UI, default `6080`
+- `NOVNC_BIND_ADDR`: bind address for the management UI, default `127.0.0.1`
+- `UI_AUTH_USERNAME`: optional HTTP Basic Auth username
+- `UI_AUTH_PASSWORD`: optional HTTP Basic Auth password
 - `UI_PASSWORD`: optional password for the noVNC session
 - `PROXY_SOCKS_HOST_PORT`: exposed SOCKS5 proxy port, default `6454`
+- `PROXY_BIND_ADDR`: bind address for the SOCKS5 proxy, default `127.0.0.1`
 
 Example:
 
@@ -128,8 +150,12 @@ cp .env.example .env
 ```
 
 ```text
+NOVNC_BIND_ADDR=127.0.0.1
 NOVNC_HOST_PORT=16080
+UI_AUTH_USERNAME=admin
+UI_AUTH_PASSWORD=change-me
 UI_PASSWORD=change-me
+PROXY_BIND_ADDR=127.0.0.1
 PROXY_SOCKS_HOST_PORT=16454
 ```
 
@@ -138,6 +164,27 @@ Then rebuild:
 ```bash
 docker compose up -d --build
 ```
+
+## Optional DNS and control port exposure
+
+The default deployment does not publish the internal DNS and control ports. If you really need them, use the optional overlay:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.admin-ports.yml up -d
+```
+
+That overlay can expose:
+
+- `19227` for the internal control interface
+- `1053/tcp` and `1053/udp` for the DNS listener
+
+These ports also default to `127.0.0.1` in `.env.example` for safety.
+
+The optional overlay was validated on the remote server and correctly published:
+
+- `127.0.0.1:19227 -> 19227/tcp`
+- `127.0.0.1:1053 -> 1053/tcp`
+- `127.0.0.1:1053 -> 1053/udp`
 
 ## Why "connected" could fail before
 
@@ -182,6 +229,7 @@ This behavior was validated on the remote Ubuntu server used during this project
 - clicking the main connect button switched the app state from `未连接` to `已连接`
 - host listeners remained present on `127.0.0.1:19227`, `6454`, and `1053`
 - a real SOCKS5 test request succeeded through `127.0.0.1:6454`
+- the noVNC UI remained reachable on `127.0.0.1:6080`
 
 ## Headless core mode
 
@@ -219,6 +267,7 @@ For project history and pending technical work, also see:
 
 - `docs/MAINTENANCE_NOTES.md`
 - `docs/OPEN_ISSUES.md`
+- `docs/SECURITY.md`
 
 ## Updating the Speedcat package later
 
@@ -234,5 +283,7 @@ When Speedcat releases a new Linux package:
 - `noVNC` is the default management UI
 - raw `VNC` is kept as an internal backend for noVNC and is not published by default
 - the default exposed proxy port is the SOCKS5 listener on `6454`
+- DNS and control ports are opt-in through `docker-compose.admin-ports.yml`
 - the default deployment now uses explicit Docker port mappings instead of `network_mode: host`
+- the security-first default bind target is `127.0.0.1`
 - this repository tracks deployment code and documentation, not account data or vendor downloads

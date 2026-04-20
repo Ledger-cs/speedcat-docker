@@ -6,14 +6,18 @@ services:
     image: speedcat-scclient:1.33.12
     container_name: speedcat-scclient
     restart: unless-stopped
+    cap_drop:
+      - ALL
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
+    security_opt:
+      - no-new-privileges:true
     shm_size: "512m"
     ports:
-      - "${NOVNC_BIND_ADDR:-0.0.0.0}:${NOVNC_HOST_PORT:-6080}:6080"
-      - "${PROXY_BIND_ADDR:-0.0.0.0}:${PROXY_SOCKS_HOST_PORT:-6454}:6454"
+      - "${NOVNC_BIND_ADDR:-127.0.0.1}:${NOVNC_HOST_PORT:-6080}:6080"
+      - "${PROXY_BIND_ADDR:-127.0.0.1}:${PROXY_SOCKS_HOST_PORT:-6454}:6454"
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       MODE: ${MODE:-gui}
@@ -21,7 +25,10 @@ services:
       ENABLE_NOVNC: ${ENABLE_NOVNC:-1}
       VNC_PORT: ${VNC_PORT:-5900}
       NOVNC_PORT: ${NOVNC_PORT:-6080}
+      NOVNC_BACKEND_PORT: ${NOVNC_BACKEND_PORT:-6081}
       UI_PASSWORD: ${UI_PASSWORD:-}
+      UI_AUTH_USERNAME: ${UI_AUTH_USERNAME:-}
+      UI_AUTH_PASSWORD: ${UI_AUTH_PASSWORD:-}
       XVFB_WHD: ${XVFB_WHD:-1280x800x24}
       CONFIG_DIR: ${CONFIG_DIR:-/data/config}
       CONFIG_FILE: ${CONFIG_FILE:-/data/config/config.yaml}

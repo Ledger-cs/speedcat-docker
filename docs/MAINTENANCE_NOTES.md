@@ -131,6 +131,7 @@ After updating the deployment model to match the intended usage pattern:
 
 - the container published `6080/tcp` for the management UI
 - the container published `6454/tcp` for the SOCKS5 proxy
+- the published bindings were limited to `127.0.0.1`
 - `http://127.0.0.1:6080/vnc.html` returned `200 OK`
 - a real SOCKS5 request through `127.0.0.1:6454` succeeded
 
@@ -138,6 +139,17 @@ Optional UI authentication was checked by comparing the `x11vnc` startup argumen
 
 - with no `UI_PASSWORD`, the process started with `-nopw`
 - with `UI_PASSWORD` set, the no-password flag disappeared, indicating password-protected mode
+
+HTTP Basic Auth for noVNC was also validated:
+
+- without credentials, the UI endpoint returned `401 Unauthorized`
+- with the configured credentials, the UI endpoint returned `200 OK`
+
+The optional admin port overlay was validated as well:
+
+- `127.0.0.1:19227` mapped to the control port
+- `127.0.0.1:1053/tcp` mapped to the DNS TCP listener
+- `127.0.0.1:1053/udp` mapped to the DNS UDP listener
 
 ## Actions already taken in the repository
 

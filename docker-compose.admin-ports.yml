@@ -1,0 +1,6 @@
+services:
+  speedcat:
+    ports:
+      - "${CONTROL_BIND_ADDR:-127.0.0.1}:${CONTROL_HOST_PORT:-19227}:19227"
+      - "${DNS_BIND_ADDR:-127.0.0.1}:${DNS_HOST_PORT:-1053}:1053/tcp"
+      - "${DNS_BIND_ADDR:-127.0.0.1}:${DNS_HOST_PORT:-1053}:1053/udp"

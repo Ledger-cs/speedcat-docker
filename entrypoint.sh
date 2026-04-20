@@ -34,8 +34,11 @@ fi
 DISPLAY_NUM="${DISPLAY:-:99}"
 VNC_PORT="${VNC_PORT:-5900}"
 NOVNC_PORT="${NOVNC_PORT:-6080}"
+NOVNC_BACKEND_PORT="${NOVNC_BACKEND_PORT:-6081}"
 XVFB_WHD="${XVFB_WHD:-1280x800x24}"
 UI_PASSWORD="${UI_PASSWORD:-${VNC_PASSWORD:-}}"
+UI_AUTH_USERNAME="${UI_AUTH_USERNAME:-}"
+UI_AUTH_PASSWORD="${UI_AUTH_PASSWORD:-}"
 
 PIDS=()
 
@@ -52,6 +55,13 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
+if [[ -n "${UI_AUTH_USERNAME}" || -n "${UI_AUTH_PASSWORD}" ]]; then
+  if [[ -z "${UI_AUTH_USERNAME}" || -z "${UI_AUTH_PASSWORD}" ]]; then
+    echo "UI_AUTH_USERNAME and UI_AUTH_PASSWORD must both be set to enable HTTP Basic Auth." >&2
+    exit 1
+  fi
+fi
+
 echo "Starting Xvfb on ${DISPLAY_NUM}..."
 Xvfb "${DISPLAY_NUM}" -screen 0 "${XVFB_WHD}" -nolisten tcp -ac +extension GLX +render -noreset \
   >/data/logs/xvfb.log 2>&1 &
@@ -66,6 +76,7 @@ if [[ "${ENABLE_VNC:-1}" == "1" || "${ENABLE_NOVNC:-1}" == "1" ]]; then
   X11VNC_ARGS=(
     -display "${DISPLAY_NUM}"
     -forever
+    -localhost
     -shared
     -rfbport "${VNC_PORT}"
     -quiet
@@ -82,9 +93,66 @@ if [[ "${ENABLE_VNC:-1}" == "1" || "${ENABLE_NOVNC:-1}" == "1" ]]; then
 fi
 
 if [[ "${ENABLE_NOVNC:-1}" == "1" ]]; then
-  echo "Starting noVNC on port ${NOVNC_PORT}..."
-  websockify --web=/usr/share/novnc/ "${NOVNC_PORT}" "127.0.0.1:${VNC_PORT}" \
+  mkdir -p /tmp/nginx/client_temp /tmp/nginx/proxy_temp /tmp/nginx/fastcgi_temp /tmp/nginx/uwsgi_temp /tmp/nginx/scgi_temp
+
+  AUTH_DIRECTIVES=""
+  if [[ -n "${UI_AUTH_USERNAME}" && -n "${UI_AUTH_PASSWORD}" ]]; then
+    echo "Enabling HTTP Basic Auth for noVNC UI..."
+    htpasswd -bcB /tmp/nginx/.htpasswd "${UI_AUTH_USERNAME}" "${UI_AUTH_PASSWORD}" >/dev/null
+    AUTH_DIRECTIVES=$'    auth_basic "Restricted";\n    auth_basic_user_file /tmp/nginx/.htpasswd;'
+  fi
+
+  cat > /tmp/nginx/nginx.conf <<EOF
+worker_processes 1;
+pid /tmp/nginx/nginx.pid;
+error_log /data/logs/nginx-error.log warn;
+
+events {
+  worker_connections 1024;
+}
+
+http {
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+  access_log /data/logs/nginx-access.log;
+  sendfile on;
+  client_body_temp_path /tmp/nginx/client_temp;
+  proxy_temp_path /tmp/nginx/proxy_temp;
+  fastcgi_temp_path /tmp/nginx/fastcgi_temp;
+  uwsgi_temp_path /tmp/nginx/uwsgi_temp;
+  scgi_temp_path /tmp/nginx/scgi_temp;
+
+  map \$http_upgrade \$connection_upgrade {
+    default upgrade;
+    '' close;
+  }
+
+  server {
+    listen ${NOVNC_PORT};
+    server_name _;
+
+    location / {
+${AUTH_DIRECTIVES}
+      proxy_pass http://127.0.0.1:${NOVNC_BACKEND_PORT};
+      proxy_http_version 1.1;
+      proxy_set_header Host \$host;
+      proxy_set_header Upgrade \$http_upgrade;
+      proxy_set_header Connection \$connection_upgrade;
+      proxy_buffering off;
+    }
+  }
+}
+EOF
+fi
+
+if [[ "${ENABLE_NOVNC:-1}" == "1" ]]; then
+  echo "Starting noVNC backend on port ${NOVNC_BACKEND_PORT}..."
+  websockify --web=/usr/share/novnc/ "127.0.0.1:${NOVNC_BACKEND_PORT}" "127.0.0.1:${VNC_PORT}" \
     >/data/logs/novnc.log 2>&1 &
+  PIDS+=("$!")
+
+  echo "Starting HTTP UI gateway on port ${NOVNC_PORT}..."
+  nginx -c /tmp/nginx/nginx.conf -g 'daemon off;' >/data/logs/nginx.log 2>&1 &
   PIDS+=("$!")
 fi
 
