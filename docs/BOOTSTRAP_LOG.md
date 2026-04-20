@@ -20,6 +20,11 @@ This file records the initial repository setup so future maintenance stays under
 - Added `docker-compose.tun.yml` as an optional overlay for TUN mode
 - Updated `install-docker-ubuntu.sh` to fall back to Ubuntu packages if the official Docker repository fails
 
+## Repository content policy
+
+- Included the installation package archives needed to reproduce the build
+- Kept runtime screenshots, logs, caches, and database files out of Git to avoid uploading environment-specific session data
+
 ## Current GitHub status
 
 - Local Git history is ready

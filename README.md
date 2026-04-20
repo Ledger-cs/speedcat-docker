@@ -23,15 +23,19 @@ The project supports two runtime modes:
 - `install-docker-ubuntu.sh`: Docker installation helper with fallback logic
 - `docs/GITHUB_WORKFLOW.md`: recommended GitHub maintenance workflow
 
-## Before you build
+## Included artifacts
 
-The official vendor archive is intentionally not committed to Git because it is a downloaded third-party package and can be large or subject to redistribution limits.
+This repository now tracks the package files used during the initial build so the environment can be reproduced later and package updates can be managed in branches.
 
-Place the Speedcat Linux archive in the repository root before building:
+Tracked artifacts:
 
-```text
-scclient_1.33.12_linux_universal_amd64.tar.gz
-```
+- `linux.zip`: the original downloaded Speedcat Linux package bundle
+- `scclient_1.33.12_linux_universal_amd64.tar.gz`: the Linux universal package used by the Docker image build
+- `speedcat-docker-bundle.tar.gz`: a portable repository bundle created during the initial setup
+
+Runtime logs, caches, screenshots, and database files are still excluded from Git because they are environment-specific and may contain session data.
+
+`linux.zip` is tracked with Git LFS because it exceeds GitHub's regular 100 MB Git object limit.
 
 ## Standard build flow
 
@@ -49,6 +53,8 @@ chmod +x install-docker-ubuntu.sh
 ```bash
 docker compose up -d --build
 ```
+
+Because the package archives are tracked in the repository, a fresh clone already contains the files needed for the initial image build.
 
 ## GUI bootstrap mode
 
@@ -105,10 +111,20 @@ This repository is designed to be managed with GitHub:
 
 - use Issues to record bugs and future improvements
 - use Pull Requests for non-trivial changes
-- keep runtime data and downloaded archives out of Git
+- keep runtime data out of Git
 - write small, descriptive commit messages
+- install Git LFS before pulling or replacing `linux.zip`
 
 See `docs/GITHUB_WORKFLOW.md` for the recommended daily workflow.
+
+## Updating the Speedcat package later
+
+When Speedcat releases a new Linux package:
+
+1. Create a new branch
+2. Replace `linux.zip` and the extracted package archive used by the build
+3. Update documentation if the version or startup behavior changes
+4. Commit and open a Pull Request for review
 
 ## Build notes
 

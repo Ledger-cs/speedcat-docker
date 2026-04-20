@@ -11,6 +11,12 @@ This project is intended to be maintained with GitHub so changes stay traceable 
 5. Push the branch to GitHub.
 6. Open a Pull Request when the change is ready to review.
 
+If you will pull or replace `linux.zip`, install Git LFS first:
+
+```bash
+git lfs install
+```
+
 ## Example commands
 
 ```bash
@@ -37,10 +43,11 @@ Use short messages that explain what changed:
 - Use Pull Requests for every non-trivial change
 - Tag versions when the image layout becomes stable
 - Keep server-specific secrets and account data out of the repository
+- Use dedicated branches when replacing tracked package archives such as `linux.zip`
 
 ## AI collaboration notes
 
 - Keep operational steps documented in `README.md`
 - Keep reusable maintenance steps in `docs/`
-- Do not commit downloaded vendor packages or runtime data
+- Do not commit runtime data such as logs, screenshots, caches, or database files
 - When asking AI tools to edit this repo, point them to the exact files to change

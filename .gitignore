@@ -13,3 +13,7 @@ data/
 .env
 .DS_Store
 Thumbs.db
+
+!linux.zip
+!speedcat-docker-bundle.tar.gz
+!scclient_1.33.12_linux_universal_amd64.tar.gz
