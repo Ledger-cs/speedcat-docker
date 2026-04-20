@@ -38,7 +38,6 @@ Tracked artifacts:
 - `scclient_1.33.12_linux_universal_amd64.tar.gz`: the Linux universal package used by the Docker image build
 - `speedcat-docker-bundle.tar.gz`: a portable repository bundle created during the initial setup
 
-Runtime logs, caches, screenshots, and database files are still excluded from Git because they are environment-specific and may contain session data.
 
 `linux.zip` is tracked with Git LFS because it exceeds GitHub's regular 100 MB Git object limit.
 
