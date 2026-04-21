@@ -7,18 +7,73 @@ export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/runtime-scclient}"
 
+MODE="${MODE:-gui}"
+ENABLE_FILE_LOGS="${ENABLE_FILE_LOGS:-0}"
+LOG_DIR="${LOG_DIR:-/data/logs}"
+FILE_LOG_MAX_BYTES="${FILE_LOG_MAX_BYTES:-10485760}"
+FILE_LOG_MAX_FILES="${FILE_LOG_MAX_FILES:-3}"
+
 mkdir -p \
   "$HOME" \
   "$XDG_CONFIG_HOME" \
   "$XDG_DATA_HOME" \
   "$XDG_CACHE_HOME" \
   "$XDG_RUNTIME_DIR" \
-  /data/config \
-  /data/logs
+  /data/config
 
 chmod 700 "$XDG_RUNTIME_DIR"
 
-MODE="${MODE:-gui}"
+log_target() {
+  local name="$1"
+
+  if [[ "$ENABLE_FILE_LOGS" == "1" ]]; then
+    echo "${LOG_DIR}/${name}.log"
+  else
+    echo "/proc/1/fd/1"
+  fi
+}
+
+rotate_log_file() {
+  local file="$1"
+  local size
+  local limit="$FILE_LOG_MAX_BYTES"
+  local keep="$FILE_LOG_MAX_FILES"
+  local i
+
+  if [[ ! -f "$file" || ! "$limit" =~ ^[0-9]+$ || ! "$keep" =~ ^[0-9]+$ || "$keep" -lt 1 ]]; then
+    return 0
+  fi
+
+  size=$(wc -c < "$file")
+  if [[ "$size" -lt "$limit" ]]; then
+    return 0
+  fi
+
+  rm -f "${file}.${keep}"
+  for ((i = keep - 1; i >= 1; i--)); do
+    if [[ -f "${file}.${i}" ]]; then
+      mv "${file}.${i}" "${file}.$((i + 1))"
+    fi
+  done
+  mv "$file" "${file}.1"
+}
+
+prepare_file_logs() {
+  local names=(fluxbox nginx-access nginx-error nginx novnc scclient x11vnc xvfb)
+  local name
+  local file
+
+  if [[ "$ENABLE_FILE_LOGS" != "1" ]]; then
+    return 0
+  fi
+
+  mkdir -p "$LOG_DIR"
+  for name in "${names[@]}"; do
+    file="${LOG_DIR}/${name}.log"
+    rotate_log_file "$file"
+    touch "$file"
+  done
+}
 
 if [[ "$MODE" == "core" ]]; then
   if [[ ! -f "${CONFIG_FILE}" ]]; then
@@ -30,6 +85,8 @@ if [[ "$MODE" == "core" ]]; then
   echo "Starting Speedcat embedded core in headless mode..."
   exec /opt/scclient/lib/ScclientCore_amd64 -d "${CONFIG_DIR}" -f "${CONFIG_FILE}"
 fi
+
+prepare_file_logs
 
 DISPLAY_NUM="${DISPLAY:-:99}"
 VNC_PORT="${VNC_PORT:-5900}"
@@ -67,11 +124,11 @@ fi
 
 echo "Starting Xvfb on ${DISPLAY_NUM}..."
 Xvfb "${DISPLAY_NUM}" -screen 0 "${XVFB_WHD}" -nolisten tcp -ac +extension GLX +render -noreset \
-  >/data/logs/xvfb.log 2>&1 &
+  >"$(log_target xvfb)" 2>&1 &
 PIDS+=("$!")
 
 echo "Starting Fluxbox..."
-DISPLAY="${DISPLAY_NUM}" fluxbox >/data/logs/fluxbox.log 2>&1 &
+DISPLAY="${DISPLAY_NUM}" fluxbox >"$(log_target fluxbox)" 2>&1 &
 PIDS+=("$!")
 
 if [[ "${ENABLE_VNC:-1}" == "1" || "${ENABLE_NOVNC:-1}" == "1" ]]; then
@@ -91,7 +148,7 @@ if [[ "${ENABLE_VNC:-1}" == "1" || "${ENABLE_NOVNC:-1}" == "1" ]]; then
     X11VNC_ARGS+=(-nopw)
   fi
 
-  x11vnc "${X11VNC_ARGS[@]}" >/data/logs/x11vnc.log 2>&1 &
+  x11vnc "${X11VNC_ARGS[@]}" >"$(log_target x11vnc)" 2>&1 &
   PIDS+=("$!")
 fi
 
@@ -108,7 +165,7 @@ if [[ "${ENABLE_NOVNC:-1}" == "1" ]]; then
   cat > /tmp/nginx/nginx.conf <<EOF
 worker_processes 1;
 pid /tmp/nginx/nginx.pid;
-error_log /data/logs/nginx-error.log warn;
+error_log $(log_target nginx-error) warn;
 
 events {
   worker_connections 1024;
@@ -117,7 +174,7 @@ events {
 http {
   include /etc/nginx/mime.types;
   default_type application/octet-stream;
-  access_log /data/logs/nginx-access.log;
+  access_log $(log_target nginx-access);
   sendfile on;
   limit_req_zone \$binary_remote_addr zone=ui_req_limit:10m rate=${UI_RATE_LIMIT_RPS}r/s;
   limit_conn_zone \$binary_remote_addr zone=ui_conn_limit:10m;
@@ -157,11 +214,11 @@ fi
 if [[ "${ENABLE_NOVNC:-1}" == "1" ]]; then
   echo "Starting noVNC backend on port ${NOVNC_BACKEND_PORT}..."
   websockify --web=/usr/share/novnc/ "127.0.0.1:${NOVNC_BACKEND_PORT}" "127.0.0.1:${VNC_PORT}" \
-    >/data/logs/novnc.log 2>&1 &
+    >"$(log_target novnc)" 2>&1 &
   PIDS+=("$!")
 
   echo "Starting HTTP UI gateway on port ${NOVNC_PORT}..."
-  nginx -c /tmp/nginx/nginx.conf -g 'daemon off;' >/data/logs/nginx.log 2>&1 &
+  nginx -c /tmp/nginx/nginx.conf -g 'daemon off;' >"$(log_target nginx)" 2>&1 &
   PIDS+=("$!")
 fi
 
@@ -175,7 +232,7 @@ dbus-run-session -- bash -lc "
   export XDG_RUNTIME_DIR='${XDG_RUNTIME_DIR}'
   cd /opt/scclient
   ./scclient
-" >/data/logs/scclient.log 2>&1 &
+" >"$(log_target scclient)" 2>&1 &
 APP_PID=$!
 PIDS+=("${APP_PID}")
 

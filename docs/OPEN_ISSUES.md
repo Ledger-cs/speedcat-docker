@@ -65,7 +65,25 @@ Next steps:
 - check whether future vendor releases expose clearer diagnostics
 - identify the minimal runtime signals needed for automated health checks
 
-### 4. Decide whether reverse-engineering artifacts should be curated in-repo
+### 4. Automate image publishing for the prebuilt-image workflow
+
+Status:
+
+- Open
+
+Why it still matters:
+
+- the repository now prefers `docker pull` for operators
+- that model is strongest when image publication is reproducible and routine
+- manual publishing steps are easy to forget during package refreshes
+
+Next steps:
+
+- decide on the canonical registry such as Docker Hub or GHCR
+- add a documented tagging policy
+- automate build-and-push steps in CI or a controlled maintainer workflow
+
+### 5. Decide whether reverse-engineering artifacts should be curated in-repo
 
 Status:
 

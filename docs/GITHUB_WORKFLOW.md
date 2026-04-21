@@ -1,121 +1,143 @@
 # GitHub Maintenance Workflow
 
-This project is intended to be maintained through GitHub so code changes, package updates, and deployment decisions remain traceable.
+This project is maintained through GitHub so deployment code, image build inputs, and runtime changes remain traceable.
 
-## Recommended daily flow
+## Two distinct workflows
 
-1. Pull the latest `main`
-2. Create a dedicated branch for the change
-3. Update code or documentation
-4. Validate the change locally when possible
-5. Re-test the build or runtime behavior on the target Linux server
-6. Commit with a short action-focused message
-7. Push the branch to GitHub
-8. Open a Pull Request for any non-trivial change
+The repository now intentionally separates:
 
-If the change affects the Docker image, do not skip the remote validation step. The current maintenance baseline assumes real verification on the Linux server before merging.
+- operator workflow
+  - pull a published image and run it
+- maintainer workflow
+  - update `linux.zip`, rebuild the image, publish a new tag
 
-## Repository prerequisites
+Operators should not need to build locally just to deploy or update the service.
 
-Before working with the tracked package archives, install Git LFS:
+## Operator workflow
 
-```bash
-git lfs install
-```
+Use this path for normal runtime usage:
 
-The repository currently depends on:
+1. pull the latest repository changes
+2. update `.env` if runtime settings changed
+3. pull the published image
+4. restart the stack
 
-- normal Git for source and documentation
-- Git LFS for `linux.zip`
-- SSH access for pushing to GitHub
-
-## Example branch workflow
+Typical flow:
 
 ```bash
 git pull
-git checkout -b feature/update-entrypoint
-git status
-git add .
-git commit -m "Improve entrypoint startup flow"
-git push -u origin feature/update-entrypoint
-gh pr create --fill
+docker compose pull
+docker compose up -d
 ```
 
-## Package update workflow
+## Maintainer workflow
 
-When Speedcat releases a new Linux package, use a dedicated branch and treat it as a build-input change, not just a file replacement.
+Use this path only when you are changing image contents, startup logic, or vendor package inputs.
 
 Recommended flow:
 
-1. Create a branch such as `feature/update-speedcat-package`
-2. Replace `linux.zip`
-3. Replace the extracted build archive used by `Dockerfile`
-4. Recalculate the SHA256 of the extracted archive
-5. Update `SCCLIENT_TARBALL_SHA256` in `Dockerfile`
-6. Review `README.md` and `docs/` for version-specific behavior changes
-7. Rebuild on the Linux server with `docker compose build`
-8. Commit and push only after the new checksum passes in the real build
+1. pull the latest `main`
+2. create a dedicated branch
+3. install Git LFS if needed
+4. update code, docs, or `linux.zip`
+5. build with `docker-compose.build.yml`
+6. validate on a real Linux server
+7. publish the new image tag
+8. update `.env.example` or docs if runtime usage changed
+9. push and open a Pull Request
 
-Example SHA256 commands:
+Example:
+
+```bash
+git pull
+git checkout -b feature/update-speedcat-package
+git lfs install
+docker compose -f docker-compose.yml -f docker-compose.build.yml build
+git status
+git add .
+git commit -m "Update Speedcat package to 1.33.12"
+git push -u origin feature/update-speedcat-package
+gh pr create --fill
+```
+
+If your build environment cannot reach Docker Hub, you may override the base image at build time:
+
+```bash
+BASE_IMAGE=docker.m.daocloud.io/library/ubuntu:24.04 \
+docker compose -f docker-compose.yml -f docker-compose.build.yml build
+```
+
+That is an operator-side compatibility override, not the default repository contract.
+
+## Why Git LFS is required
+
+Git LFS is used for vendor archives such as `linux.zip`.
+
+This is necessary not only because GitHub has a 100 MB regular object limit, but also because:
+
+- vendor archives are opaque binary blobs
+- normal Git diffs are not useful for them
+- repeated binary updates bloat repository history quickly
+
+Use Git LFS whenever the repository intentionally tracks vendor package archives, even if a specific file is below 100 MB.
+
+## Package update workflow
+
+When Speedcat releases a new Linux package:
+
+1. replace `linux.zip`
+2. update `SPEEDCAT_LINUX_ZIP_SHA256` in `Dockerfile`
+3. inspect the zip and confirm the universal tarball name
+4. update `SCCLIENT_TARBALL_NAME` if the versioned filename changed
+5. update `SCCLIENT_TARBALL_SHA256`
+6. rebuild with the maintainer build overlay
+7. validate on a Linux server
+8. publish the image tag
+9. document any behavior change
+
+Example hash commands:
 
 Windows PowerShell:
 
 ```powershell
-Get-FileHash .\scclient_1.33.12_linux_universal_amd64.tar.gz -Algorithm SHA256
+Get-FileHash .\linux.zip -Algorithm SHA256
 ```
 
 Linux:
 
 ```bash
-sha256sum ./scclient_1.33.12_linux_universal_amd64.tar.gz
+sha256sum ./linux.zip
 ```
-
-If the archive is replaced but `SCCLIENT_TARBALL_SHA256` is not updated, the Docker build should fail early by design.
 
 ## Remote validation workflow
 
-For build or runtime changes, validate on the Linux host before merging.
+For image or runtime changes, validate on the Linux host before merging.
 
 Typical flow:
 
 ```bash
-scp Dockerfile entrypoint.sh docker-compose.yml einfash:~/speedcat-docker/
+scp Dockerfile entrypoint.sh docker-compose.yml docker-compose.build.yml einfash:~/speedcat-docker/
 ssh einfash
 cd ~/speedcat-docker
-docker compose build
+docker compose -f docker-compose.yml -f docker-compose.build.yml build
 docker compose up -d
 ```
 
-If the change affects optional admin ports or compatibility overlays, test those explicitly as well.
+If the change affects optional admin ports or compatibility overlays, test those explicitly too.
 
 ## Commit message style
 
 Use short messages that describe the concrete change:
 
-- `Add package checksum verification`
-- `Add UI rate limiting`
-- `Tighten Dockerfile runtime contract`
-- `Document system proxy dependency`
-
-## Suggested project management usage
-
-- Use Issues for unresolved bugs, follow-up hardening work, and future headless-mode research
-- Use Pull Requests for any change that is more than a trivial typo fix
-- Tag stable milestones when the build, package version, or deployment contract changes
-- Keep secrets, `.env`, and account data out of Git
-- Keep package updates and security changes in separate branches when practical
+- `Default compose to prebuilt images`
+- `Build image from linux.zip only`
+- `Switch Dockerfile to official Ubuntu base`
+- `Bound runtime logs and disable file logs by default`
 
 ## Documentation discipline
 
-- Put end-user or operator instructions in `README.md`
-- Put reusable maintenance knowledge in `docs/`
-- Keep `docs/MAINTENANCE_NOTES.md` focused on technical findings and root causes
-- Keep `docs/OPEN_ISSUES.md` limited to work that is still unresolved
-- Update `docs/SECURITY.md` whenever port exposure, authentication, privileges, or image trust assumptions change
-
-## AI collaboration notes
-
-- Tell AI tools which exact files are in scope
-- Ask AI tools to preserve tracked package files and not to revert unrelated user changes
-- Require AI tools to validate Docker-impacting changes on the Linux server before calling the work complete
-- Do not commit runtime logs, screenshots, caches, or exported account state
+- put operator instructions in `README.md`
+- keep reusable maintenance knowledge in `docs/`
+- keep `docs/OPEN_ISSUES.md` limited to unresolved work
+- update `docs/SECURITY.md` whenever privileges, port exposure, logging, or image trust assumptions change
+- update docs whenever the deployment contract changes from `build` to `pull`, or vice versa

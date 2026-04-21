@@ -1,9 +1,7 @@
 services:
   speedcat:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: speedcat-scclient:1.33.12
+    image: ${SPEEDCAT_IMAGE:-speedcat-scclient:1.33.12}
+    pull_policy: ${SPEEDCAT_PULL_POLICY:-if_not_present}
     container_name: speedcat-scclient
     restart: unless-stopped
     cap_drop:
@@ -23,6 +21,10 @@ services:
       MODE: ${MODE:-gui}
       ENABLE_VNC: ${ENABLE_VNC:-1}
       ENABLE_NOVNC: ${ENABLE_NOVNC:-1}
+      ENABLE_FILE_LOGS: ${ENABLE_FILE_LOGS:-0}
+      LOG_DIR: ${LOG_DIR:-/data/logs}
+      FILE_LOG_MAX_BYTES: ${FILE_LOG_MAX_BYTES:-10485760}
+      FILE_LOG_MAX_FILES: ${FILE_LOG_MAX_FILES:-3}
       VNC_PORT: ${VNC_PORT:-5900}
       NOVNC_PORT: ${NOVNC_PORT:-6080}
       NOVNC_BACKEND_PORT: ${NOVNC_BACKEND_PORT:-6081}
@@ -37,3 +39,8 @@ services:
       CONFIG_FILE: ${CONFIG_FILE:-/data/config/config.yaml}
     volumes:
       - ./data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"

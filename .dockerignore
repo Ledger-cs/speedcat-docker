@@ -1,2 +1,4 @@
-data
-*.log
+*
+!Dockerfile
+!entrypoint.sh
+!linux.zip
