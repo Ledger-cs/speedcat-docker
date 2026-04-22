@@ -125,6 +125,57 @@ Then browse to:
 
 - [http://127.0.0.1:6080/vnc.html](http://127.0.0.1:6080/vnc.html)
 
+## Pure `docker run` deployment
+
+If you do not want to clone this repository on the server, you can deploy directly from the published image:
+
+```bash
+mkdir -p ~/speedcat-data
+sudo chown -R 10001:10001 ~/speedcat-data
+
+docker run -d \
+  --name speedcat-scclient \
+  --restart unless-stopped \
+  --cap-drop ALL \
+  --cap-add NET_ADMIN \
+  --device /dev/net/tun:/dev/net/tun \
+  --security-opt no-new-privileges:true \
+  --shm-size 512m \
+  -p 127.0.0.1:6080:6080 \
+  -p 127.0.0.1:6454:6454 \
+  -e TZ=Asia/Shanghai \
+  -e MODE=gui \
+  -e ENABLE_VNC=1 \
+  -e ENABLE_NOVNC=1 \
+  -e ENABLE_FILE_LOGS=0 \
+  -e LOG_DIR=/data/logs \
+  -e FILE_LOG_MAX_BYTES=10485760 \
+  -e FILE_LOG_MAX_FILES=3 \
+  -e VNC_PORT=5900 \
+  -e NOVNC_PORT=6080 \
+  -e NOVNC_BACKEND_PORT=6081 \
+  -e UI_AUTH_USERNAME=admin \
+  -e UI_AUTH_PASSWORD=change-me \
+  -e UI_PASSWORD=change-me \
+  -e UI_RATE_LIMIT_RPS=5 \
+  -e UI_RATE_LIMIT_BURST=20 \
+  -e UI_RATE_LIMIT_CONN=10 \
+  -e XVFB_WHD=1280x800x24 \
+  -e CONFIG_DIR=/data/config \
+  -e CONFIG_FILE=/data/config/config.yaml \
+  -v "$HOME/speedcat-data:/data" \
+  --log-driver json-file \
+  --log-opt max-size=10m \
+  --log-opt max-file=3 \
+  einfash/speedcat-scclient:1.33.12
+```
+
+If the host uses SELinux, change the bind mount to:
+
+```bash
+-v "$HOME/speedcat-data:/data:Z"
+```
+
 ## Image updates
 
 Once you are using a published image, upgrades should look like this:
@@ -203,6 +254,59 @@ Then restart:
 ```bash
 docker compose up -d
 ```
+
+## Bind-mount permissions
+
+The runtime image does not run as `root`. That means a host bind mount such as:
+
+```bash
+-v "$HOME/speedcat-data:/data"
+```
+
+must be writable by the container runtime user.
+
+This is a general Linux container rule, not a quirk of one specific server:
+
+- if a container runs as a non-root user
+- and a host directory is bind-mounted into it
+- then that host directory must be writable by the container user
+
+For the current published image, the runtime user resolves to `UID/GID 10001`, so the practical fix is:
+
+```bash
+sudo chown -R 10001:10001 ~/speedcat-data
+```
+
+If you switch to a future image that uses a different runtime user, inspect that image first instead of assuming `10001` forever:
+
+```bash
+docker image inspect einfash/speedcat-scclient:1.33.12 --format '{{.Config.User}}'
+docker run --rm --entrypoint sh einfash/speedcat-scclient:1.33.12 -c 'id -u scclient && id -g scclient'
+```
+
+If this is not handled, the container may restart with errors creating `/data/home` or `/data/config`.
+
+## Proxy model and TUN expectations
+
+The validated operator-facing runtime model for this project is:
+
+- one authenticated browser UI
+- one explicit SOCKS5 proxy port on `127.0.0.1:6454`
+
+The image still includes `NET_ADMIN`, `/dev/net/tun`, `iptables`, `nftables`, `gsettings`, and `dconf` because the official Linux client depends on those pieces during its connection workflow and connected-state handling.
+
+However, that does not mean the host is automatically running in a transparent whole-machine TUN mode.
+
+The currently validated usage pattern is:
+
+- connect the Speedcat client in the UI
+- let the embedded core expose the SOCKS5 endpoint on `6454`
+- point host applications or services at that SOCKS5 proxy explicitly
+
+In other words:
+
+- validated: explicit per-application proxying through `127.0.0.1:6454`
+- not yet validated as a project contract: host-wide transparent traffic capture for every service on the server
 
 ## Published image
 

@@ -94,6 +94,9 @@ Confirmed results include:
 - UI authentication and rate limiting worked as expected
 - the remote Docker daemon was validated pulling `einfash/speedcat-scclient:1.33.12` after adding a systemd proxy drop-in that points to `socks5://127.0.0.1:6454`
 - a second container launched from the pulled image on alternate ports and exposed its authenticated UI successfully
+- the currently validated service model is explicit SOCKS5 proxying through `127.0.0.1:6454`, not whole-host transparent TUN capture
+- bind-mounted runtime data directories were confirmed to require host-side write permission for the container runtime user (`UID/GID 10001` for the current image)
+- SELinux-style relabeling remains relevant for Rocky Linux, RHEL, CentOS, and Fedora style hosts when bind mounts are used
 
 ## Remaining gaps
 

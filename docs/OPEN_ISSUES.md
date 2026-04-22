@@ -107,7 +107,31 @@ Next steps:
 - add a documented tagging policy
 - automate build-and-push steps in CI or a controlled maintainer workflow
 
-### 6. Decide whether reverse-engineering artifacts should be curated in-repo
+### 6. Validate and document any true host-transparent TUN workflow
+
+Status:
+
+- Open
+
+Why it still matters:
+
+- the image includes TUN-related capabilities and devices
+- users may reasonably assume that means the whole host can be transparently proxied
+- the current validated baseline is narrower: explicit SOCKS5 proxying through `127.0.0.1:6454`
+
+What is already known:
+
+- the embedded core and GUI connection workflow work correctly
+- the exposed SOCKS5 proxy is functional
+- host-transparent traffic capture has not been established as a supported contract
+
+Next steps:
+
+- determine whether the official client can reliably drive a true host-transparent mode in this containerized packaging
+- separate container-local TUN capability from host-wide routing expectations in future docs and tests
+- only document a transparent-host workflow after it is explicitly revalidated
+
+### 7. Decide whether reverse-engineering artifacts should be curated in-repo
 
 Status:
 

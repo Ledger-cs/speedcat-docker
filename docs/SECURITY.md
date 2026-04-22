@@ -110,6 +110,34 @@ Security-relevant requirements include:
 
 These are necessary for the validated connected-state workflow, but they also mean the container is not a trivial least-privilege service.
 
+At the same time, operators should distinguish between:
+
+- TUN capability being present inside the container
+- host-wide transparent proxying being validated for the whole server
+
+The current project baseline validates an explicit SOCKS5 service on `127.0.0.1:6454`.
+It does not promise that unrelated host services will automatically traverse the proxy unless you configure them to do so.
+
+## Bind mounts and SELinux
+
+If you use a host bind mount such as:
+
+```bash
+-v "$HOME/speedcat-data:/data"
+```
+
+then that host directory must be writable by the container runtime user.
+
+For the current published image, that means `UID/GID 10001`.
+
+If the host runs SELinux, you should also relabel the bind mount:
+
+```bash
+-v "$HOME/speedcat-data:/data:Z"
+```
+
+Without these steps, the container can fail to create `/data/home` or `/data/config` and fall into a restart loop.
+
 ## Supply-chain integrity
 
 The build path now includes:
