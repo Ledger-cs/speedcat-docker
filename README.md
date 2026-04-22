@@ -57,7 +57,7 @@ Reasoning:
 
 The default deployment path is now:
 
-1. Pull a prebuilt image from your registry
+1. Pull a prebuilt image from Docker Hub
 2. Copy `.env.example` to `.env`
 3. Adjust runtime settings
 4. Start the container with `docker compose up -d`
@@ -87,7 +87,7 @@ This default exposure model keeps the service aligned with SSH tunneling and pri
 1. Pull the image you want to run:
 
 ```bash
-docker pull your-registry.example/speedcat-scclient:1.33.12
+docker pull einfash/speedcat-scclient:1.33.12
 ```
 
 2. Copy the example environment file:
@@ -99,7 +99,7 @@ cp .env.example .env
 3. Set the image reference and your runtime values in `.env`:
 
 ```text
-SPEEDCAT_IMAGE=your-registry.example/speedcat-scclient:1.33.12
+SPEEDCAT_IMAGE=einfash/speedcat-scclient:1.33.12
 NOVNC_BIND_ADDR=127.0.0.1
 NOVNC_HOST_PORT=6080
 PROXY_BIND_ADDR=127.0.0.1
@@ -188,7 +188,7 @@ The main runtime knobs are:
 Example:
 
 ```text
-SPEEDCAT_IMAGE=your-registry.example/speedcat-scclient:1.33.12
+SPEEDCAT_IMAGE=einfash/speedcat-scclient:1.33.12
 NOVNC_BIND_ADDR=127.0.0.1
 NOVNC_HOST_PORT=16080
 PROXY_BIND_ADDR=127.0.0.1
@@ -203,6 +203,37 @@ Then restart:
 ```bash
 docker compose up -d
 ```
+
+## Published image
+
+The maintained prebuilt image is currently published as:
+
+- `einfash/speedcat-scclient:1.33.12`
+- `einfash/speedcat-scclient:latest`
+
+Operators should prefer the pinned version tag for predictable rollouts.
+
+## Constrained-network pulls
+
+If the host cannot reach Docker Hub directly, the Docker daemon itself may need a proxy.
+
+One validated pattern on the remote server was to point Docker's systemd service at an already-working local SOCKS5 proxy:
+
+```ini
+[Service]
+Environment="HTTP_PROXY=socks5://127.0.0.1:6454"
+Environment="HTTPS_PROXY=socks5://127.0.0.1:6454"
+Environment="NO_PROXY=localhost,127.0.0.1"
+```
+
+After adding a drop-in like `/etc/systemd/system/docker.service.d/http-proxy.conf`, reload and restart Docker:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+Then `docker pull einfash/speedcat-scclient:1.33.12` was validated successfully on the remote host.
 
 ## Optional DNS and control port exposure
 

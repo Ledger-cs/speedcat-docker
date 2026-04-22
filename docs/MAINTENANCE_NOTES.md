@@ -86,10 +86,14 @@ Confirmed results include:
 
 - the image built successfully
 - the package checksum verification step returned `OK`
+- the image was published to Docker Hub as `einfash/speedcat-scclient:1.33.12`
+- the `latest` tag was also published
 - the GUI opened through noVNC
 - the client switched from `未连接` to `已连接`
 - SOCKS5 traffic through `127.0.0.1:6454` succeeded
 - UI authentication and rate limiting worked as expected
+- the remote Docker daemon was validated pulling `einfash/speedcat-scclient:1.33.12` after adding a systemd proxy drop-in that points to `socks5://127.0.0.1:6454`
+- a second container launched from the pulled image on alternate ports and exposed its authenticated UI successfully
 
 ## Remaining gaps
 
@@ -98,3 +102,4 @@ The project is functional, but some work remains open:
 - a stable pure headless `MODE=core` workflow is still not documented end-to-end
 - the official client's internal diagnostics remain hard to decode
 - a full image publishing workflow should be automated if regular package refreshes become routine
+- automated GUI interaction for a secondary pulled-image test container is still unreliable in the current headless verification setup, even though manual UI access and the primary validated service path both work

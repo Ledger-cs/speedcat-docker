@@ -65,7 +65,31 @@ Next steps:
 - check whether future vendor releases expose clearer diagnostics
 - identify the minimal runtime signals needed for automated health checks
 
-### 4. Automate image publishing for the prebuilt-image workflow
+### 4. Stabilize headless GUI automation for secondary validation containers
+
+Status:
+
+- Open
+
+Why it still matters:
+
+- the primary service path has already been validated end-to-end
+- a second container launched from the pulled Docker Hub image can already expose its authenticated UI successfully
+- but deterministic headless automation of the in-app `连接` click is still flaky, which makes unattended post-pull proxy verification weaker than it should be
+
+What is already known:
+
+- the pulled-image test container can start noVNC and serve the UI on alternate ports
+- the focused app window can be detected with `xdotool`
+- simple coordinate-based click injection did not reliably flip the app from `未连接` to `已连接`
+
+Next steps:
+
+- inspect whether Electron or the desktop stack is swallowing synthetic pointer input
+- test whether keyboard shortcuts or accessibility actions can trigger the same connection flow more reliably
+- decide whether post-pull validation should remain manual at the GUI layer or move to a lower-level signal
+
+### 5. Automate image publishing for the prebuilt-image workflow
 
 Status:
 
@@ -79,11 +103,11 @@ Why it still matters:
 
 Next steps:
 
-- decide on the canonical registry such as Docker Hub or GHCR
+- keep Docker Hub as the current canonical operator-facing registry unless requirements change
 - add a documented tagging policy
 - automate build-and-push steps in CI or a controlled maintainer workflow
 
-### 5. Decide whether reverse-engineering artifacts should be curated in-repo
+### 6. Decide whether reverse-engineering artifacts should be curated in-repo
 
 Status:
 

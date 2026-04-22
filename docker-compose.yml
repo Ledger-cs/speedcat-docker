@@ -1,6 +1,6 @@
 services:
   speedcat:
-    image: ${SPEEDCAT_IMAGE:-speedcat-scclient:1.33.12}
+    image: ${SPEEDCAT_IMAGE:-einfash/speedcat-scclient:1.33.12}
     pull_policy: ${SPEEDCAT_PULL_POLICY:-if_not_present}
     container_name: speedcat-scclient
     restart: unless-stopped
