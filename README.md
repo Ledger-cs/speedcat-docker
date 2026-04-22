@@ -34,24 +34,6 @@ That is an operator prerequisite, not part of the project contract. The reposito
 - `docs/OPEN_ISSUES.md`: unresolved follow-up work
 - `docs/SECURITY.md`: security posture and deployment guidance
 
-## Artifact policy
-
-The repository now keeps only one vendor package artifact:
-
-- `linux.zip`: the original Speedcat Linux bundle downloaded from the vendor
-
-The repository intentionally no longer tracks:
-
-- the extracted `scclient_1.33.12_linux_universal_amd64.tar.gz`
-- ad hoc repository bundles such as `speedcat-docker-bundle.tar.gz`
-
-Reasoning:
-
-- `scclient_1.33.12_linux_universal_amd64.tar.gz` already comes from `linux.zip`
-- keeping both files creates update-consistency risk
-- `speedcat-docker-bundle.tar.gz` was an ad hoc bootstrap artifact and is not part of the long-term project contract
-
-`linux.zip` is tracked with Git LFS. The reason is not only GitHub's 100 MB limit. Vendor archives are opaque binary blobs, produce poor Git diffs, and quickly bloat repository history, so LFS is the right storage model for them even below 100 MB.
 
 ## Preferred deployment model
 
@@ -377,18 +359,6 @@ FILE_LOG_MAX_FILES=3
 
 When file logging is enabled, the entrypoint rotates oversized previous log files on startup.
 
-## Why "connected" could fail before
-
-The Linux client does not treat "mihomo started" as the only success condition. Its GUI state also depends on a system proxy integration step.
-
-Earlier deployments could show `未连接` even when the proxy core was already working because:
-
-- the embedded `mihomo` process had started
-- SOCKS5 and DNS ports were listening
-- proxy traffic could already pass through
-- but the container did not provide `gsettings` and `dconf`, so the client failed during its system proxy setup step
-
-The image now includes the required GNOME-side tools so the client can complete that step and switch the GUI state to `已连接`.
 
 ## System proxy and TUN requirements
 
@@ -470,15 +440,6 @@ sha256sum ./linux.zip
 
 The build now fails early if either the tracked zip or the extracted universal tarball does not match the expected checksum.
 
-## GitHub usage
-
-This repository is designed to be managed with GitHub:
-
-- use Issues to record bugs and future improvements
-- use Pull Requests for non-trivial changes
-- keep runtime data out of Git
-- write small, descriptive commit messages
-- keep vendor archives in Git LFS
 
 See:
 
