@@ -9,7 +9,7 @@ The repository currently represents a working baseline with these characteristic
 - official base image reference uses `ubuntu:24.04`
 - default runtime path expects a prebuilt image instead of a local build
 - local builds remain available through `docker-compose.build.yml`
-- the Dockerfile extracts the universal package directly from `linux.zip`
+- the Dockerfile extracts the Debian package directly from `linux.zip`
 - the default deployment exposes:
   - one management UI on `127.0.0.1:6080`
   - one SOCKS5 proxy port on `127.0.0.1:6454`
@@ -18,7 +18,7 @@ The repository currently represents a working baseline with these characteristic
 ## Package and artifact decisions
 
 - `linux.zip` is the single source vendor artifact tracked in the repository
-- the extracted `scclient_1.33.12_linux_universal_amd64.tar.gz` is no longer kept in Git because it already comes from `linux.zip`
+- the extracted `SpeedCat-3.0.3-linux-amd64.deb` is no longer kept separately in Git because it already comes from `linux.zip`
 - `speedcat-docker-bundle.tar.gz` was a bootstrap-time helper artifact and is no longer part of the repository contract
 - Git LFS is used for tracked vendor archives because they are binary, non-diff-friendly, and expensive in normal Git history
 
@@ -86,13 +86,13 @@ Confirmed results include:
 
 - the image built successfully
 - the package checksum verification step returned `OK`
-- the image was published to Docker Hub as `einfash/speedcat-scclient:1.33.12`
+- the image was published to Docker Hub as `einfash/speedcat-scclient:3.0.3`
 - the `latest` tag was also published
 - the GUI opened through noVNC
 - the client switched from `未连接` to `已连接`
 - SOCKS5 traffic through `127.0.0.1:6454` succeeded
 - UI authentication and rate limiting worked as expected
-- the remote Docker daemon was validated pulling `einfash/speedcat-scclient:1.33.12` after adding a systemd proxy drop-in that points to `socks5://127.0.0.1:6454`
+- the remote Docker daemon was validated pulling `einfash/speedcat-scclient:3.0.3` after adding a systemd proxy drop-in that points to `socks5://127.0.0.1:6454`
 - a second container launched from the pulled image on alternate ports and exposed its authenticated UI successfully
 - the currently validated service model is explicit SOCKS5 proxying through `127.0.0.1:6454`, not whole-host transparent TUN capture
 - bind-mounted runtime data directories were confirmed to require host-side write permission for the container runtime user (`UID/GID 10001` for the current image)

@@ -55,7 +55,7 @@ git lfs install
 docker compose -f docker-compose.yml -f docker-compose.build.yml build
 git status
 git add .
-git commit -m "Update Speedcat package to 1.33.12"
+git commit -m "Update Speedcat package to 3.0.3"
 git push -u origin feature/update-speedcat-package
 gh pr create --fill
 ```
@@ -67,7 +67,15 @@ BASE_IMAGE=docker.m.daocloud.io/library/ubuntu:24.04 \
 docker compose -f docker-compose.yml -f docker-compose.build.yml build
 ```
 
-That is an operator-side compatibility override, not the default repository contract.
+If Ubuntu apt mirrors are also slow or unreachable, set `APT_MIRROR` for the maintainer build:
+
+```bash
+BASE_IMAGE=docker.m.daocloud.io/library/ubuntu:24.04 \
+APT_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/ubuntu \
+docker compose -f docker-compose.yml -f docker-compose.build.yml build
+```
+
+These are operator-side compatibility overrides, not the default repository contract.
 
 ## Why Git LFS is required
 
@@ -87,9 +95,9 @@ When Speedcat releases a new Linux package:
 
 1. replace `linux.zip`
 2. update `SPEEDCAT_LINUX_ZIP_SHA256` in `Dockerfile`
-3. inspect the zip and confirm the universal tarball name
-4. update `SCCLIENT_TARBALL_NAME` if the versioned filename changed
-5. update `SCCLIENT_TARBALL_SHA256`
+3. inspect the zip and confirm the Debian package name
+4. update `SPEEDCAT_DEB_NAME` if the versioned filename changed
+5. update `SPEEDCAT_DEB_SHA256`
 6. rebuild with the maintainer build overlay
 7. validate on a Linux server
 8. publish the image tag

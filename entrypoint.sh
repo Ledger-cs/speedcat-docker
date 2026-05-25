@@ -83,7 +83,7 @@ if [[ "$MODE" == "core" ]]; then
   fi
 
   echo "Starting Speedcat embedded core in headless mode..."
-  exec /opt/scclient/lib/ScclientCore_amd64 -d "${CONFIG_DIR}" -f "${CONFIG_FILE}"
+  exec /opt/scclient/SpeedCatCore -d "${CONFIG_DIR}" -f "${CONFIG_FILE}"
 fi
 
 prepare_file_logs
@@ -231,7 +231,7 @@ dbus-run-session -- bash -lc "
   export XDG_CACHE_HOME='${XDG_CACHE_HOME}'
   export XDG_RUNTIME_DIR='${XDG_RUNTIME_DIR}'
   cd /opt/scclient
-  ./scclient
+  ./SpeedCat
 " >"$(log_target scclient)" 2>&1 &
 APP_PID=$!
 PIDS+=("${APP_PID}")

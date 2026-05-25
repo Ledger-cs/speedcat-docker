@@ -57,8 +57,8 @@ This change was made so production and work environments are not forced to run l
 ## Image build milestones
 
 - switched the Dockerfile back to the official `ubuntu:24.04` base instead of a mirror-prefixed image reference
-- changed the build to extract the universal tarball directly from `linux.zip`
-- added SHA256 verification for both `linux.zip` and the extracted universal tarball
+- changed the build to extract the vendor package directly from `linux.zip`
+- added SHA256 verification for both `linux.zip` and the extracted vendor package
 - kept local rebuilds available through `docker-compose.build.yml`
 
 ## Logging milestones

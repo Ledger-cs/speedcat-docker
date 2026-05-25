@@ -5,3 +5,4 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: ${BASE_IMAGE:-ubuntu:24.04}
+        APT_MIRROR: ${APT_MIRROR:-}

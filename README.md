@@ -1,6 +1,6 @@
 # Speedcat Docker
 
-This repository packages the updated Speedcat Linux client `scclient_1.33.12` into a portable Docker deployment for headless Linux servers.
+This repository packages the updated Speedcat Linux client `SpeedCat 3.0.3` into a portable Docker deployment for headless Linux servers.
 
 The project supports two runtime modes:
 
@@ -69,7 +69,7 @@ This default exposure model keeps the service aligned with SSH tunneling and pri
 1. Pull the image you want to run:
 
 ```bash
-docker pull einfash/speedcat-scclient:1.33.12
+docker pull einfash/speedcat-scclient:3.0.3
 ```
 
 2. Copy the example environment file:
@@ -81,7 +81,7 @@ cp .env.example .env
 3. Set the image reference and your runtime values in `.env`:
 
 ```text
-SPEEDCAT_IMAGE=einfash/speedcat-scclient:1.33.12
+SPEEDCAT_IMAGE=einfash/speedcat-scclient:3.0.3
 NOVNC_BIND_ADDR=127.0.0.1
 NOVNC_HOST_PORT=6080
 PROXY_BIND_ADDR=127.0.0.1
@@ -149,7 +149,7 @@ docker run -d \
   --log-driver json-file \
   --log-opt max-size=10m \
   --log-opt max-file=3 \
-  einfash/speedcat-scclient:1.33.12
+  einfash/speedcat-scclient:3.0.3
 ```
 
 If the host uses SELinux, change the bind mount to:
@@ -192,12 +192,20 @@ BASE_IMAGE=docker.m.daocloud.io/library/ubuntu:24.04 \
 docker compose -f docker-compose.yml -f docker-compose.build.yml build
 ```
 
-That override is intentionally optional. The repository default remains the official image reference.
+If Ubuntu apt mirrors are also slow or unreachable, a maintainer can optionally override the apt mirror during the build:
 
-The `Dockerfile` now extracts the universal Linux tarball directly from `linux.zip` during the build, then verifies:
+```bash
+BASE_IMAGE=docker.m.daocloud.io/library/ubuntu:24.04 \
+APT_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/ubuntu \
+docker compose -f docker-compose.yml -f docker-compose.build.yml build
+```
+
+Those overrides are intentionally optional. The repository defaults remain the official image and Ubuntu apt references.
+
+The `Dockerfile` now extracts the Debian package from `linux.zip` during the build, then verifies:
 
 - the SHA256 of `linux.zip`
-- the SHA256 of the extracted universal tarball
+- the SHA256 of the extracted Debian package
 
 This keeps one source artifact in Git while still protecting build integrity.
 
@@ -221,7 +229,7 @@ The main runtime knobs are:
 Example:
 
 ```text
-SPEEDCAT_IMAGE=einfash/speedcat-scclient:1.33.12
+SPEEDCAT_IMAGE=einfash/speedcat-scclient:3.0.3
 NOVNC_BIND_ADDR=127.0.0.1
 NOVNC_HOST_PORT=16080
 PROXY_BIND_ADDR=127.0.0.1
@@ -262,8 +270,8 @@ sudo chown -R 10001:10001 ~/speedcat-data
 If you switch to a future image that uses a different runtime user, inspect that image first instead of assuming `10001` forever:
 
 ```bash
-docker image inspect einfash/speedcat-scclient:1.33.12 --format '{{.Config.User}}'
-docker run --rm --entrypoint sh einfash/speedcat-scclient:1.33.12 -c 'id -u scclient && id -g scclient'
+docker image inspect einfash/speedcat-scclient:3.0.3 --format '{{.Config.User}}'
+docker run --rm --entrypoint sh einfash/speedcat-scclient:3.0.3 -c 'id -u scclient && id -g scclient'
 ```
 
 If this is not handled, the container may restart with errors creating `/data/home` or `/data/config`.
@@ -294,7 +302,7 @@ In other words:
 
 The maintained prebuilt image is currently published as:
 
-- `einfash/speedcat-scclient:1.33.12`
+- `einfash/speedcat-scclient:3.0.3`
 - `einfash/speedcat-scclient:latest`
 
 Operators should prefer the pinned version tag for predictable rollouts.
@@ -319,7 +327,7 @@ sudo systemctl daemon-reload
 sudo systemctl restart docker
 ```
 
-Then `docker pull einfash/speedcat-scclient:1.33.12` was validated successfully on the remote host.
+Then `docker pull einfash/speedcat-scclient:3.0.3` was validated successfully on the remote host.
 
 ## Optional DNS and control port exposure
 
@@ -418,8 +426,8 @@ When Speedcat releases a new Linux package:
 2. replace `linux.zip`
 3. recalculate the SHA256 of `linux.zip`
 4. update `SPEEDCAT_LINUX_ZIP_SHA256` in `Dockerfile`
-5. recalculate the SHA256 of the extracted universal tarball inside `linux.zip`
-6. update `SCCLIENT_TARBALL_NAME` and `SCCLIENT_TARBALL_SHA256` in `Dockerfile`
+5. recalculate the SHA256 of the extracted Debian package inside `linux.zip`
+6. update `SPEEDCAT_DEB_NAME` and `SPEEDCAT_DEB_SHA256` in `Dockerfile`
 7. rebuild with the maintainer build overlay
 8. publish the new image tag
 9. update runtime documentation if behavior changed
@@ -438,7 +446,7 @@ Linux:
 sha256sum ./linux.zip
 ```
 
-The build now fails early if either the tracked zip or the extracted universal tarball does not match the expected checksum.
+The build now fails early if either the tracked zip or the extracted Debian package does not match the expected checksum.
 
 
 See:

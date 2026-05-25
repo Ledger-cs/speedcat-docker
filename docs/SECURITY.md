@@ -144,7 +144,7 @@ The build path now includes:
 
 - the official `ubuntu:24.04` base image
 - SHA256 verification of `linux.zip`
-- SHA256 verification of the extracted universal tarball inside that zip
+- SHA256 verification of the extracted Debian package inside that zip
 
 Operational implication:
 

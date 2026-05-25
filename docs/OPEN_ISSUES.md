@@ -17,7 +17,7 @@ Why it still matters:
 
 What is already known:
 
-- `ScclientCore_amd64` exists and runs as the embedded proxy core
+- `SpeedCatCore` exists and runs as the embedded proxy core
 - the official GUI is still the only validated path for login and subscription synchronization
 - the generated Mihomo-compatible configuration was not yet captured in a repeatable, durable way
 

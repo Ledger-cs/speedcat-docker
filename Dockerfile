@@ -2,11 +2,13 @@ ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE} AS source
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG SPEEDCAT_LINUX_ZIP_SHA256=6E1506E6D4EC383C64E8C4517F8F876B1D9966C455A9AD07C2FC16B158196AF1
-ARG SCCLIENT_TARBALL_NAME=scclient_1.33.12_linux_universal_amd64.tar.gz
-ARG SCCLIENT_TARBALL_SHA256=37568906AABB5BA0B21E5B38EB5A0E14C48D908ADC0642F38439E1A17A53A401
+ARG APT_MIRROR=
+ARG SPEEDCAT_LINUX_ZIP_SHA256=1E151010E1AAEF5B75881C2604A553C7134653FF5C00D2D51DD04B17D91E3976
+ARG SPEEDCAT_DEB_NAME=SpeedCat-3.0.3-linux-amd64.deb
+ARG SPEEDCAT_DEB_SHA256=AE2FCD43177CAE03DAF70503FAEEB73AEC92ABFE1B7F26539FA852473EB59A9C
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN if [ -n "${APT_MIRROR}" ]; then sed -i "s|http://archive.ubuntu.com/ubuntu|${APT_MIRROR}|g; s|http://security.ubuntu.com/ubuntu|${APT_MIRROR}|g" /etc/apt/sources.list.d/ubuntu.sources; fi \
+    && apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     unzip \
     && rm -rf /var/lib/apt/lists/*
@@ -14,20 +16,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY linux.zip /tmp/linux.zip
 
 RUN echo "${SPEEDCAT_LINUX_ZIP_SHA256}  /tmp/linux.zip" | sha256sum -c - \
-    && unzip -j /tmp/linux.zip "${SCCLIENT_TARBALL_NAME}" -d /tmp \
-    && echo "${SCCLIENT_TARBALL_SHA256}  /tmp/${SCCLIENT_TARBALL_NAME}" | sha256sum -c - \
-    && tar -xzf "/tmp/${SCCLIENT_TARBALL_NAME}" -C /tmp \
+    && unzip -j /tmp/linux.zip "dist/${SPEEDCAT_DEB_NAME}" -d /tmp \
+    && echo "${SPEEDCAT_DEB_SHA256}  /tmp/${SPEEDCAT_DEB_NAME}" | sha256sum -c - \
+    && dpkg-deb -x "/tmp/${SPEEDCAT_DEB_NAME}" /tmp/speedcat-root \
     && mkdir -p /opt/scclient \
-    && cp -a /tmp/bundle/. /opt/scclient/
+    && cp -a /tmp/speedcat-root/usr/share/SpeedCat/. /opt/scclient/
 
 ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
+ARG APT_MIRROR=
 
 # Keep only runtime dependencies in the image. Diagnostics should use
 # host-side docker tooling or temporary packages in ad hoc test containers.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN if [ -n "${APT_MIRROR}" ]; then sed -i "s|http://archive.ubuntu.com/ubuntu|${APT_MIRROR}|g; s|http://security.ubuntu.com/ubuntu|${APT_MIRROR}|g" /etc/apt/sources.list.d/ubuntu.sources; fi \
+    && apt-get update && apt-get install -y --no-install-recommends \
     apache2-utils \
     ca-certificates \
     dbus-x11 \
@@ -49,6 +53,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgtk-3-0 \
     libharfbuzz0b \
     libjavascriptcoregtk-4.1-0 \
+    libkeybinder-3.0-0 \
     libnss3 \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
