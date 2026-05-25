@@ -452,6 +452,7 @@ The build now fails early if either the tracked zip or the extracted Debian pack
 See:
 
 - `docs/GITHUB_WORKFLOW.md`
+- `docs/MANUAL_VALIDATION_3.0.3.md`
 - `docs/MAINTENANCE_NOTES.md`
 - `docs/OPEN_ISSUES.md`
 - `docs/SECURITY.md`
